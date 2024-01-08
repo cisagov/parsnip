@@ -1,0 +1,1 @@
+FROM ghcr.io/mmguero/zeek:master

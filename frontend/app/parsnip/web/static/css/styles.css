@@ -1,0 +1,93 @@
+/* Copyright 2023, Battelle Energy Alliance, LLC, ALL RIGHTS RESERVED */
+
+@import "theme.css";
+
+body
+{
+    background-color: var(--color1);
+    color: var(--text1);
+    margin: 0px;
+    font-family: Arial, sans-serif;
+}
+
+footer
+{
+    text-align: center;
+}
+
+h1, h2, h3, h4, h5, h6
+{
+    text-align: center;
+}
+
+.leftText
+{
+    text-align: left;
+}
+
+.hidden
+{
+    display: none;
+}
+
+.buttonColumn a, .buttonColumn button, .buttonColumn input
+{
+    display: block;
+}
+
+.centeredText
+{
+    text-align: center;
+}
+
+.buttonRow
+{
+    display: flex;
+    width: 100%;
+}
+
+div.ui-state-error
+{
+    padding: 0 .7em;
+}
+
+span.ui-icon-alert
+{
+    float: left;
+    margin-right: .3em;
+}
+
+p.errorLabel
+{
+    font-weight: bold;
+}
+
+.ui-widget input
+{
+    padding: 0px 5px;
+}
+
+table.infoTable
+{
+    border-collapse: collapse;
+}
+
+table.infoTable tr
+{
+    border-width: 1px;
+    border-style: solid;
+}
+
+table.infoTable td, table.infoTable th
+{
+    border-width: 1px;
+    border-style: dashed;
+    padding: 5px;
+}
+
+/* Alternate Row Shading */
+table.infoTable tr:nth-child(even)
+{
+    background-color: var(--tableColor2);
+    color: var(--text2);
+}

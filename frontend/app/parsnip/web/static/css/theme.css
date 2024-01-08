@@ -1,0 +1,15 @@
+/* Copyright 2023, Battelle Energy Alliance, LLC, ALL RIGHTS RESERVED */
+
+:root
+{
+    --color1: #fff5d7; /* Border and Disabled Background Color */
+    --color1a: #ceb568; /* Background Color */
+    --color1b: #555555; /* Inactive Text Color */
+    --color1c: #bbbbbb; /* Border and Disabled Text Color */
+    --color2: #000000; /* Active Text Color */
+    --color3: #cccccc; /* 2nd Disabled Text Color? */
+    --tableColor1: #fff5d7;
+    --text1: #000000;
+    --tableColor2: #ceb568;
+    --text2: #000000;
+}

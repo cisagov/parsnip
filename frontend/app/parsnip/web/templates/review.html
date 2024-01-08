@@ -1,0 +1,25 @@
+{# Copyright 2023, Battelle Energy Alliance, LLC, ALL RIGHTS RESERVED #}
+
+{% set years = "2023" %}
+
+{% import 'macros.j2' as macros -%}
+
+{% extends "layout.base" %}
+
+{% block additionalHeader %}
+{% endblock additionalHeader %}
+
+{% block content %}
+<div id="issues">
+{% for issue in issues %}
+    <div class='issueSection'>
+        <h3>Issue: {{ issue["title"] }}</h3>
+        <p>Type: {{ issue["type"] }}</p>
+        <p>Content: {{ issue["content"] }}</p>
+    </div>
+{% endfor %}
+</div>
+{% endblock content %}
+
+{% block additionalJavascript %}
+{% endblock additionalJavascript %}

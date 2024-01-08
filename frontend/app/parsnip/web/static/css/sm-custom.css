@@ -1,0 +1,332 @@
+/* Copyright 2023, Battelle Energy Alliance, LLC, ALL RIGHTS RESERVED */
+@import "theme.css";
+
+.sm {
+    z-index: 99 !important;
+}
+
+.sm-custom {
+  background: var(--color1a);
+  border-radius: 5px;
+}
+.sm-custom a, .sm-custom a:hover, .sm-custom a:focus, .sm-custom a:active {
+  padding: 13px 20px;
+  /* make room for the toggle button (sub indicator) */
+  padding-right: 58px;
+  color: var(--color1b);
+  font-family: "Lucida Sans Unicode", "Lucida Sans", "Lucida Grande", Arial, sans-serif;
+  font-size: 18px;
+  font-weight: normal;
+  line-height: 17px;
+  text-decoration: none;
+}
+.sm-custom a.current {
+  color: var(--color2);
+}
+.sm-custom a.disabled {
+  color: var(--color1c);
+}
+.sm-custom a .sub-arrow {
+  position: absolute;
+  top: 50%;
+  margin-top: -17px;
+  left: auto;
+  right: 4px;
+  width: 34px;
+  height: 34px;
+  overflow: hidden;
+  font: bold 16px/34px monospace !important;
+  text-align: center;
+  text-shadow: none;
+  background: rgba(255, 255, 255, 0.5);
+  border-radius: 5px;
+}
+.sm-custom a .sub-arrow::before {
+  content: '+';
+}
+.sm-custom a.highlighted .sub-arrow::before {
+  content: '-';
+}
+.sm-custom > li:first-child > a, .sm-custom > li:first-child > :not(ul) a {
+  border-radius: 5px 5px 0 0;
+}
+.sm-custom > li:last-child > a, .sm-custom > li:last-child > *:not(ul) a, .sm-custom > li:last-child > ul, .sm-custom > li:last-child > ul > li:last-child > a, .sm-custom > li:last-child > ul > li:last-child > *:not(ul) a, .sm-custom > li:last-child > ul > li:last-child > ul, .sm-custom > li:last-child > ul > li:last-child > ul > li:last-child > a, .sm-custom > li:last-child > ul > li:last-child > ul > li:last-child > *:not(ul) a, .sm-custom > li:last-child > ul > li:last-child > ul > li:last-child > ul, .sm-custom > li:last-child > ul > li:last-child > ul > li:last-child > ul > li:last-child > a, .sm-custom > li:last-child > ul > li:last-child > ul > li:last-child > ul > li:last-child > *:not(ul) a, .sm-custom > li:last-child > ul > li:last-child > ul > li:last-child > ul > li:last-child > ul, .sm-custom > li:last-child > ul > li:last-child > ul > li:last-child > ul > li:last-child > ul > li:last-child > a, .sm-custom > li:last-child > ul > li:last-child > ul > li:last-child > ul > li:last-child > ul > li:last-child > *:not(ul) a, .sm-custom > li:last-child > ul > li:last-child > ul > li:last-child > ul > li:last-child > ul > li:last-child > ul {
+  border-radius: 0 0 5px 5px;
+}
+.sm-custom > li:last-child > a.highlighted, .sm-custom > li:last-child > *:not(ul) a.highlighted, .sm-custom > li:last-child > ul > li:last-child > a.highlighted, .sm-custom > li:last-child > ul > li:last-child > *:not(ul) a.highlighted, .sm-custom > li:last-child > ul > li:last-child > ul > li:last-child > a.highlighted, .sm-custom > li:last-child > ul > li:last-child > ul > li:last-child > *:not(ul) a.highlighted, .sm-custom > li:last-child > ul > li:last-child > ul > li:last-child > ul > li:last-child > a.highlighted, .sm-custom > li:last-child > ul > li:last-child > ul > li:last-child > ul > li:last-child > *:not(ul) a.highlighted, .sm-custom > li:last-child > ul > li:last-child > ul > li:last-child > ul > li:last-child > ul > li:last-child > a.highlighted, .sm-custom > li:last-child > ul > li:last-child > ul > li:last-child > ul > li:last-child > ul > li:last-child > *:not(ul) a.highlighted {
+  border-radius: 0;
+}
+.sm-custom li {
+  border-top: 1px solid rgba(0, 0, 0, 0.05);
+}
+.sm-custom > li:first-child {
+  border-top: 0;
+}
+.sm-custom ul {
+  background: rgba(162, 162, 162, 0.1);
+}
+.sm-custom ul a, .sm-custom ul a:hover, .sm-custom ul a:focus, .sm-custom ul a:active {
+  font-size: 16px;
+  border-left: 8px solid transparent;
+}
+.sm-custom ul ul a,
+.sm-custom ul ul a:hover,
+.sm-custom ul ul a:focus,
+.sm-custom ul ul a:active {
+  border-left: 16px solid transparent;
+}
+.sm-custom ul ul ul a,
+.sm-custom ul ul ul a:hover,
+.sm-custom ul ul ul a:focus,
+.sm-custom ul ul ul a:active {
+  border-left: 24px solid transparent;
+}
+.sm-custom ul ul ul ul a,
+.sm-custom ul ul ul ul a:hover,
+.sm-custom ul ul ul ul a:focus,
+.sm-custom ul ul ul ul a:active {
+  border-left: 32px solid transparent;
+}
+.sm-custom ul ul ul ul ul a,
+.sm-custom ul ul ul ul ul a:hover,
+.sm-custom ul ul ul ul ul a:focus,
+.sm-custom ul ul ul ul ul a:active {
+  border-left: 40px solid transparent;
+}
+
+@media (min-width: 768px) {
+  /* Switch to desktop layout
+  -----------------------------------------------
+     These transform the menu tree from
+     collapsible to desktop (navbar + dropdowns)
+  -----------------------------------------------*/
+  /* start... (it's not recommended editing these rules) */
+  .sm-custom ul {
+    position: absolute;
+    width: 12em;
+  }
+
+  .sm-custom li {
+    float: left;
+  }
+
+  .sm-custom.sm-rtl li {
+    float: right;
+  }
+
+  .sm-custom ul li, .sm-custom.sm-rtl ul li, .sm-custom.sm-vertical li {
+    float: none;
+  }
+
+  .sm-custom a {
+    white-space: nowrap;
+  }
+
+  .sm-custom ul a, .sm-custom.sm-vertical a {
+    white-space: normal;
+  }
+
+  .sm-custom .sm-nowrap > li > a, .sm-custom .sm-nowrap > li > :not(ul) a {
+    white-space: nowrap;
+  }
+
+  /* ...end */
+  .sm-custom {
+    padding: 0 10px;
+    background: var(--color1a);
+    border-radius: 100px;
+  }
+  .sm-custom a, .sm-custom a:hover, .sm-custom a:focus, .sm-custom a:active, .sm-custom a.highlighted {
+    padding: 12px 12px;
+    color: var(--color1b);
+    border-radius: 0 !important;
+  }
+  .sm-custom a:hover, .sm-custom a:focus, .sm-custom a:active, .sm-custom a.highlighted {
+    color: var(--color2);
+  }
+  .sm-custom a.current {
+    color: var(--color2);
+  }
+  .sm-custom a.disabled {
+    color: var(--color1c);
+  }
+  .sm-custom a.has-submenu {
+    padding-right: 24px;
+  }
+  .sm-custom a .sub-arrow {
+    top: 50%;
+    margin-top: -2px;
+    right: 12px;
+    width: 0;
+    height: 0;
+    border-width: 4px;
+    border-style: solid dashed dashed dashed;
+    border-color: var(--color1b) transparent transparent transparent;
+    background: transparent;
+    border-radius: 0;
+  }
+  .sm-custom a .sub-arrow::before {
+    display: none;
+  }
+  .sm-custom li {
+    border-top: 0;
+  }
+  .sm-custom > li > ul::before,
+  .sm-custom > li > ul::after {
+    content: '';
+    position: absolute;
+    top: -18px;
+    left: 30px;
+    width: 0;
+    height: 0;
+    overflow: hidden;
+    border-width: 9px;
+    border-style: dashed dashed solid dashed;
+    border-color: transparent transparent var(--color1c) transparent;
+  }
+  .sm-custom > li > ul::after {
+    top: -16px;
+    left: 31px;
+    border-width: 8px;
+    border-color: transparent transparent var(--color1) transparent;
+  }
+  .sm-custom ul {
+    border: 1px solid var(--color1c);
+    padding: 5px 0;
+    background: var(--color1);
+    border-radius: 5px !important;
+    box-shadow: 0 5px 9px rgba(0, 0, 0, 0.2);
+  }
+  .sm-custom ul a, .sm-custom ul a:hover, .sm-custom ul a:focus, .sm-custom ul a:active, .sm-custom ul a.highlighted {
+    border: 0 !important;
+    padding: 10px 20px;
+    color: var(--color1b);
+  }
+  .sm-custom ul a:hover, .sm-custom ul a:focus, .sm-custom ul a:active, .sm-custom ul a.highlighted {
+    background: var(--color1a);
+    color: var(--color2);
+  }
+  .sm-custom ul a.current {
+    color: var(--color2);
+  }
+  .sm-custom ul a.disabled {
+    background: var(--color1);
+    color: var(--color3);
+  }
+  .sm-custom ul a.has-submenu {
+    padding-right: 20px;
+  }
+  .sm-custom ul a .sub-arrow {
+    right: 8px;
+    top: 50%;
+    margin-top: -5px;
+    border-width: 5px;
+    border-style: dashed dashed dashed solid;
+    border-color: transparent transparent transparent var(--color1b);
+  }
+  .sm-custom .scroll-up,
+  .sm-custom .scroll-down {
+    position: absolute;
+    display: none;
+    visibility: hidden;
+    overflow: hidden;
+    background: var(--color1);
+    height: 20px;
+  }
+  .sm-custom .scroll-up:hover,
+  .sm-custom .scroll-down:hover {
+    background: var(--color1a);
+  }
+  .sm-custom .scroll-up:hover .scroll-up-arrow {
+    border-color: transparent transparent var(--color2) transparent;
+  }
+  .sm-custom .scroll-down:hover .scroll-down-arrow {
+    border-color: var(--color2) transparent transparent transparent;
+  }
+  .sm-custom .scroll-up-arrow,
+  .sm-custom .scroll-down-arrow {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    margin-left: -6px;
+    width: 0;
+    height: 0;
+    overflow: hidden;
+    border-width: 6px;
+    border-style: dashed dashed solid dashed;
+    border-color: transparent transparent var(--color1b) transparent;
+  }
+  .sm-custom .scroll-down-arrow {
+    top: 8px;
+    border-style: solid dashed dashed dashed;
+    border-color: var(--color1b) transparent transparent transparent;
+  }
+  .sm-custom.sm-rtl a.has-submenu {
+    padding-right: 12px;
+    padding-left: 24px;
+  }
+  .sm-custom.sm-rtl a .sub-arrow {
+    right: auto;
+    left: 12px;
+  }
+  .sm-custom.sm-rtl.sm-vertical a.has-submenu {
+    padding: 10px 20px;
+  }
+  .sm-custom.sm-rtl.sm-vertical a .sub-arrow {
+    right: auto;
+    left: 8px;
+    border-style: dashed solid dashed dashed;
+    border-color: transparent var(--color1b) transparent transparent;
+  }
+  .sm-custom.sm-rtl > li > ul::before {
+    left: auto;
+    right: 30px;
+  }
+  .sm-custom.sm-rtl > li > ul::after {
+    left: auto;
+    right: 31px;
+  }
+  .sm-custom.sm-rtl ul a.has-submenu {
+    padding: 10px 20px !important;
+  }
+  .sm-custom.sm-rtl ul a .sub-arrow {
+    right: auto;
+    left: 8px;
+    border-style: dashed solid dashed dashed;
+    border-color: transparent var(--color1b) transparent transparent;
+  }
+  .sm-custom.sm-vertical {
+    padding: 10px 0;
+    border-radius: 5px;
+  }
+  .sm-custom.sm-vertical a {
+    padding: 10px 20px;
+  }
+  .sm-custom.sm-vertical a:hover, .sm-custom.sm-vertical a:focus, .sm-custom.sm-vertical a:active, .sm-custom.sm-vertical a.highlighted {
+    background: var(--color1);
+  }
+  .sm-custom.sm-vertical a.disabled {
+    background: var(--color1a);
+  }
+  .sm-custom.sm-vertical a .sub-arrow {
+    right: 8px;
+    top: 50%;
+    margin-top: -5px;
+    border-width: 5px;
+    border-style: dashed dashed dashed solid;
+    border-color: transparent transparent transparent var(--color1b);
+  }
+  .sm-custom.sm-vertical > li > ul::before,
+  .sm-custom.sm-vertical > li > ul::after {
+    display: none;
+  }
+  .sm-custom.sm-vertical ul a {
+    padding: 10px 20px;
+  }
+  .sm-custom.sm-vertical ul a:hover, .sm-custom.sm-vertical ul a:focus, .sm-custom.sm-vertical ul a:active, .sm-custom.sm-vertical ul a.highlighted {
+    background: var(--color1a);
+  }
+  .sm-custom.sm-vertical ul a.disabled {
+    background: var(--color1);
+  }
+}
