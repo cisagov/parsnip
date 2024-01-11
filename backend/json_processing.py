@@ -288,6 +288,7 @@ def createZeekObjects(scopes, customFieldTypes, bitfields, allObjects, allSwitch
             if len(object.fields) == 1 and object.fields[0].type == "switch":
                 switchType = getSwitchType(object.fields[0].referenceType, object.fields[0], scope, scopes, allObjects, allSwitches)
                 if switchType == "trivial":
+                    object.needsSpecificExport = False
                     continue
             for idx, field in enumerate(object.fields):
                 zeekField = zeektypes.ZeekField()
