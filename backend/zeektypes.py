@@ -1,4 +1,4 @@
-# Copyright 2023, Battelle Energy Alliance, LLC, ALL RIGHTS RESERVED
+# Copyright 2024, Battelle Energy Alliance, LLC, ALL RIGHTS RESERVED
 
 from string import Template
 from math import ceil 
@@ -48,7 +48,7 @@ class ZeekMain:
 ## Author:   Melanie Pierce
 ## Contact:  melanie.pierce@inl.gov
 ##
-## Copyright (c) 2023 Battelle Energy Alliance, LLC.  All rights reserved.\n
+## Copyright (c) 2024 Battelle Energy Alliance, LLC.  All rights reserved.\n
 """.format(utils.PROTOCOL_NAME)
         fileString += "module {};\n\n".format(utils.PROTOCOL_NAME)
         fileString += "export {\n"

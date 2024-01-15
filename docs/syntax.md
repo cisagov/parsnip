@@ -1163,4 +1163,4 @@ Parsnip Example:
 
 While defining the field, you can set a field to be a switch by setting the "type" to "switch" and adding the variable "referenceType" which will be set to the same name as the switch structure. The "input" field will contain a "source" variable that is set to the field that switch cases are based on. If any other variables are needed for the individual cases to function you can pass those into the switch using the "additionalInputs" array with each member containing a similar source variable. For more on passing/referencing values look [here](#providing_input).
 
-Copyright 2023, Battelle Energy Alliance, LLC All Rights Reserved
+Copyright 2024, Battelle Energy Alliance, LLC All Rights Reserved

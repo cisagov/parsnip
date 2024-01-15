@@ -1,4 +1,4 @@
-# Copyright 2023, Battelle Energy Alliance, LLC, ALL RIGHTS RESERVED
+# Copyright 2024, Battelle Energy Alliance, LLC, ALL RIGHTS RESERVED
 
 from parsnip.main.forms import (AddEnumForm, AddBitfieldForm, AddSwitchForm,
                                 AddObjectForm, AddFieldForm,
@@ -320,3 +320,8 @@ def review(title="Review"):
     issues = reviewStructure()
     uploadSnapshotForm = UploadSnapshotForm()
     return render_template('review.html', title=title, issues=issues, uploadSnapshotForm=uploadSnapshotForm)
+    
+@main.route("/notice", methods=['GET'])
+def notice(title="Notice"):
+    uploadSnapshotForm = UploadSnapshotForm()
+    return render_template('notice.html', title=title, uploadSnapshotForm=uploadSnapshotForm)

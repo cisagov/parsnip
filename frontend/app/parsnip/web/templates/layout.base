@@ -1,4 +1,4 @@
-<!-- Copyright 2023, Battelle Energy Alliance, LLC, ALL RIGHTS RESERVED -->
+<!-- Copyright 2024, Battelle Energy Alliance, LLC, ALL RIGHTS RESERVED -->
 
 <!DOCTYPE html>
 <html lang="en">
@@ -49,6 +49,7 @@
                 </li>
                 <li><a href="{{ url_for('main.review') }}">Review</a></li>
                 <li><a href="{{ url_for('main.exportData',exportType='parsnip')}}">Export Parsnip Files</a></li>
+                <li><a href="{{ url_for('main.notice') }}">Notice</a></li>
             </ul>
         </nav>
         <hr />

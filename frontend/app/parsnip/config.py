@@ -1,4 +1,4 @@
-# Copyright 2023, Battelle Energy Alliance, LLC, ALL RIGHTS RESERVED
+# Copyright 2024, Battelle Energy Alliance, LLC, ALL RIGHTS RESERVED
 
 class Config:
     SECRET_KEY = '4a5e281c1993a110e86cddf056c7a182'

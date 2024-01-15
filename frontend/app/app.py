@@ -1,4 +1,4 @@
-# Copyright 2023, Battelle Energy Alliance, LLC, ALL RIGHTS RESERVED
+# Copyright 2024, Battelle Energy Alliance, LLC, ALL RIGHTS RESERVED
 
 from parsnip import create_app
 from parsnip.config import Config

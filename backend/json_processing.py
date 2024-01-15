@@ -1,4 +1,4 @@
-# Copyright 2023, Battelle Energy Alliance, LLC, ALL RIGHTS RESERVED
+# Copyright 2024, Battelle Energy Alliance, LLC, ALL RIGHTS RESERVED
 
 # This file contains functions for reading each json file type
 import json

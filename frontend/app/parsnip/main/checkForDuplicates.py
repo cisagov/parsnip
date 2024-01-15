@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# Copyright 2023, Battelle Energy Alliance, LLC, ALL RIGHTS RESERVED
+# Copyright 2024, Battelle Energy Alliance, LLC, ALL RIGHTS RESERVED
 
 import argparse
 import os

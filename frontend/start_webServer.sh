@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Copyright 2023, Battelle Energy Alliance, LLC All Rights Reserved
+# Copyright 2024, Battelle Energy Alliance, LLC All Rights Reserved
 
 hostPort=5000
 dockerPort=5000
