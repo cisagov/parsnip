@@ -150,8 +150,8 @@ The license that the parser is being released under.
 * Parsnip Syntax
     - Currently not implemented
 
-#### <a name="conversionFile"></a>Conversion File
-Base64 encoded file contents that will be used to generate a C++ file used to do custom type conversions within the parser. If no conversionFile variable is set, a skeleton version of the file will be generated based on the defined [User Types](#userTypes). This file can be found at analyzer/&lt;lower_case_parser_name&gt;_conversion.cc in the generated output directory.
+#### <a name="conversion-file"></a>Conversion File
+Base64 encoded file contents that will be used to generate a C++ file used to do custom type conversions within the parser. If no conversionFile variable is set, a skeleton version of the file will be generated based on the defined [User Types](#user-types). This file can be found at analyzer/&lt;lower_case_parser_name&gt;_conversion.cc in the generated output directory.
 
 * Frontend Information
     - Currently not implemented
@@ -249,7 +249,7 @@ Parsnip Example:
 ]
 ```
 
-### <a name="userTypes"></a>User Types
+### <a name="user-types"></a>User Types
 User types are used to define data types that are not natively supported by Parsnip but are used in the protocol being parsed. Each user type is accompanied by a conversion function written in C++ which processes bytes and returns a native type based on their values.
 
 * Frontend Information
@@ -267,7 +267,7 @@ User types are used to define data types that are not natively supported by Pars
         * "interpretingFunction": name of the C++ function used to convert from bytes to a known type
         * "returnType": a known c++ type (e.g., string")
 
-The interpreting functions will need to be defined in the [Conversion File](#conversionFile) value eventually.
+The interpreting functions will need to be defined in the [Conversion File](#conversion-file) value eventually.
 
 Parsnip Example:
 ```JSON
@@ -291,10 +291,10 @@ Structures contain all the objects necessary to fully construct and parse a prot
 * Snapshot Syntax
     - Top Level Element: "Structures"
     - Object which includes the following optional values:
-        * "Bitfields": an array of [Bitfields](#structures_bitfields)
-        * "Enums": an array of [Enums](#structures_enums)
-        * "Objects" an array of [Objects](#structures_objects)
-        * "Switches" an array of [Choices](#structures_choices)
+        * "Bitfields": an array of [Bitfields](#bitfields)
+        * "Enums": an array of [Enums](#enumerations)
+        * "Objects" an array of [Objects](#objects)
+        * "Switches" an array of [Choices](#choices)
 * Parsnip Syntax
     - Spread across the following files:
         * &lt;scope&gt;/bitfields.json
@@ -303,7 +303,7 @@ Structures contain all the objects necessary to fully construct and parse a prot
         * &lt;scope&gt;/switches.json
     - Each file contains an array of objects representing the associated structures.
 
-### <a name="dependency_info"></a>Dependency Information
+### <a name="dependency-information"></a>Dependency Information
 Dependencies are applicable to objects and switches. ## TODO: DEFINE DEPENDENCIES ## The variables in each dependency are:
 
 * "name": The name of dependency that allows it to be referenced within the structure
@@ -340,7 +340,7 @@ Parsnip Examples:
 }
 ```
 
-### <a name="field_info"></a>Field/Action Information
+### <a name="fieldaction-information"></a>Field/Action Information
 Fields are used to define what each portion of an object or action contains. There can be any number of fields defined within an object and one action for every option in a switch. The order they are listed in the array will determine the order they are expected in the packet when parsing.
 
 The variables in a field are:
@@ -350,7 +350,7 @@ The variables in a field are:
     - May not begin with a number
     - Convention is camel case (i.e., thisIsMyValue)
 * "description": Used to describe what the field is used for in the context of the command.
-* "type": Defines the type of data carried in the field that is expected to be parsed. More details in [Data Types](#dataTypes).
+* "type": Defines the type of data carried in the field that is expected to be parsed. More details in [Data Types](#data-types).
 * One of:
     - "size": If the type is primative (i.e. it doesn't require a referenceType to a structure) then this is the size of the field in bits. It is best practice to the field size a multiple of 8. If two fields meet outside of a multiple of 8 then try using a bitfield described below.
     - Combination:
@@ -379,7 +379,7 @@ Parsnip Examples:
 ```
 
 #### Extended Field Options
-##### <a name="providing_input"></a>Providing Input
+##### <a name="providing-input"></a>Providing Input
 Sometimes referenced types require input. If the reference type is an "object", inputs are passed using the "inputs" value. If the reference type is a "switch", the main input is passed using the "input" value and additional values are passed in using the "additionalInputs" array value. The order of the inputs must match the order of the dependencies. Values referring to previously defined fields are preceded by "self."
 
 Parsnip Examples:
@@ -515,7 +515,7 @@ Parsnip Examples:
 
 ```
 
-### <a name="structures_enums"></a>Enumerations
+### <a name="enumerations"></a>Enumerations
 Enumerations are used to represent a range of named values with a constant integer.
 
 Mandatory Values:
@@ -602,7 +602,7 @@ Parsnip Example:
 }
 ```
 
-### <a name="structures_bitfields"></a>Bitfields
+### <a name="bitfields"></a>Bitfields
 A bitfield is a type where the values are dependent on a range of bits or individual bits rather than a number of bytes.
 
 Mandatory Values:
@@ -699,7 +699,7 @@ Parsnip Example:
 }
 ```
 
-### <a name="structures_objects"></a>Objects
+### <a name="objects"></a>Objects
 Parsnip at its core is object oriented. An object is a basic unit in the language that contains a mix of fields and other objects.
 
 Mandatory Values:
@@ -709,7 +709,7 @@ Mandatory Values:
     - May not begin with a number
     - Convention is Pascal Case (i.e., ThisIsMyName)
 * "size": The number of bits used to represent the values
-* "fields": An array of field (value) structures. See [Field Information](#field_info) for more information on the format of each field.
+* "fields": An array of field (value) structures. See [Field Information](#fieldaction-information) for more information on the format of each field.
 
 Optional Values:
 
@@ -722,7 +722,7 @@ Optional Values:
 * "logWithParent": Boolean value that indicates whether or not the object should be logged as part of the parent object
     - Not implemented in the front end, implied true
 * "scope": Specifies the scope the object should be associated with
-* "dependsOn": Array of input that the object depends on. See [Dependency Information](#dependency_info) for more information on dependency information.
+* "dependsOn": Array of input that the object depends on. See [Dependency Information](#dependency-information) for more information on dependency information.
 
 Additional Information:
 
@@ -812,7 +812,7 @@ Parsnip Example:
 }
 ```
 
-### <a name="structures_choices"></a>Choices
+### <a name="choices"></a>Choices
 
 Choices (switches) are a structure used when an object field could contain many different possibilities based on a value elsewhere in the packet. A common example is when the body of a packet could contain different fields based on the command number listed in the header.
 
@@ -822,12 +822,12 @@ Mandatory Values:
     - Must only contain upper and lower case letters, underscores, and numbers
     - May not begin with a number
     - Convention is Pascal Case (i.e., ThisIsMyName)
-* "dependsOn": The dependency that the switch will depend on when picking from the associated options. See [Dependency Information](#dependency_info) for more information on dependency information.
+* "dependsOn": The dependency that the switch will depend on when picking from the associated options. See [Dependency Information](#dependency-information) for more information on dependency information.
 * "options": An array of option structures. See below for more information.
 
 Optional Values:
 
-* "additionalDependsOn": An array of additional dependencies. See [Dependency Information](#dependency_info) for more information on dependency information.
+* "additionalDependsOn": An array of additional dependencies. See [Dependency Information](#dependency-information) for more information on dependency information.
 * "default": The default action to take if an option is not triggered. This defaults to a "void" action of do nothing. The contents are the same as the contents of an action in an object as outlined below. Note: this is not currently implemented in the front end.
 
 Options:
@@ -835,7 +835,7 @@ Options:
 An array of key value pairs used to take a course of action based on the input. The variables in each option are:
 
 * "value": A valid value, based on the type specified in the "dependsOn" variable to compare against
-* "action": The action to take if the value passed in matches the value specified. See [Field Information](#field_info) for more information on the format of the action.
+* "action": The action to take if the value passed in matches the value specified. See [Field Information](#fieldaction-information) for more information on the format of the action.
     - Best practice is to only place objects under the action object to maintain readability unless there is only one field that needs to be parsed in the case
 
 Additional Information:
@@ -912,7 +912,7 @@ Parsnip Example:
 
 ```
 
-# <a name="dataTypes"></a>Data Types
+# <a name="data-types"></a>Data Types
 ## Basic Types TODO: Primative or Basic Type? Fix throughout. Pick one & stick to it
 
 Parsnip supports:
@@ -1161,6 +1161,6 @@ Parsnip Example:
 }
 ```
 
-While defining the field, you can set a field to be a switch by setting the "type" to "switch" and adding the variable "referenceType" which will be set to the same name as the switch structure. The "input" field will contain a "source" variable that is set to the field that switch cases are based on. If any other variables are needed for the individual cases to function you can pass those into the switch using the "additionalInputs" array with each member containing a similar source variable. For more on passing/referencing values look [here](#providing_input).
+While defining the field, you can set a field to be a switch by setting the "type" to "switch" and adding the variable "referenceType" which will be set to the same name as the switch structure. The "input" field will contain a "source" variable that is set to the field that switch cases are based on. If any other variables are needed for the individual cases to function you can pass those into the switch using the "additionalInputs" array with each member containing a similar source variable. For more on passing/referencing values look [here](#providing-input).
 
 Copyright 2024, Battelle Energy Alliance, LLC All Rights Reserved
