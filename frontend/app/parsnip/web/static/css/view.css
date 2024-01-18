@@ -1,0 +1,27 @@
+/* Copyright 2024, Battelle Energy Alliance, LLC, ALL RIGHTS RESERVED */
+
+@import "theme.css";
+
+div.flexArea
+{
+    display: flex;
+    height: max-content;
+}
+
+div#addStructure
+{
+    width: 20%;
+    min-width: 10%;
+}
+
+div#viewStructure
+{
+    width: 80%;
+    min-width: 40%;
+}
+
+div#addFields
+{
+    width: 100%;
+    min-width: 40%;
+}

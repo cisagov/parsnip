@@ -1,0 +1,62 @@
+{# Copyright 2024, Battelle Energy Alliance, LLC, ALL RIGHTS RESERVED #}
+
+{% set years = "2024" %}
+
+{% extends "layout.base" %}
+
+{% block additionalHeader %}
+{% endblock additionalHeader %}
+
+{% block content %}
+<div class="ui-widget-content">
+    <h1>Welcome to PARSNIP!</h1>
+    <div id="content">
+        <h2 class="leftText">Overview</h2>
+        <div id="navigationOverview">
+            <p>General Overview Information</p>
+        </div>
+        <h2 class="leftText">Navigation</h2>
+        <div id="navigationContent">
+            <dl>
+                <dt>File</dt>
+                <dd>Allows import and export of save files (snapshots)</dd>
+                
+                <dt>Instructions</dt>
+                <dd>This page</dd>
+                
+                <dt>Parser Configuration</dt>
+                <dd>General Parser information: Name, TCP/UDP, ports, etc.</dd>
+                
+                <dt>View/Edit Components</dt>
+                <dd>Direct access to top level components: Enums, Bitfields, Objects, and Choices</dd>
+                
+                <dt>Review</dt>
+                <dd>Runs a series of checks related to the parser and provides feedback to the user</dd>
+                
+                <dt>Export Parsnip Files</dt>
+                <dd>Exports a zip file of files to use with the Parsnip Backend to generate a parser.</dd>
+            </dl>
+        </div>
+        <h2 class="leftText">Review Limitations</h2>
+        <div id="reviewContent">
+            <p>Some prolific text about how the review functionality works...</p>
+        </div>
+        <h2 class="leftText">Frontend Limitations</h2>
+        <div id="frontendLimitations">
+            <p>Currently, there are several concepts that are supported by the Parsnip language, but are not currently implemented in the Frontend.</p>
+        </div>
+    </div>
+</div>
+{% endblock content %}
+
+{% block additionalJavascript %}
+<script>
+  $(function() {
+    $( "#content" ).accordion({
+        active: false,
+        collapsible: true
+    });
+  });
+</script>
+{% endblock additionalJavascript %}
+

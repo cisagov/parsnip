@@ -1,0 +1,318 @@
+{# Copyright 2024, Battelle Energy Alliance, LLC, ALL RIGHTS RESERVED #}
+
+{% set years = "2024" %}
+
+{% import 'macros.j2' as macros -%}
+
+{% extends "layout.base" %}
+
+{% block additionalHeader %}
+{% endblock additionalHeader %}
+
+{% block content %}
+<h2>Parser Enums</h2>
+<div class="ui-widget-content">
+    <div class="buttonRow">
+        <a href="#" class="ui-button ui-widget ui-corner-all addEnumButton">Add Enum</a>
+    </div>
+    <table id="objecsTable" class="infoTable">
+        <thead>
+            <tr>
+                <th scope="col">Name</th>
+                <th scope="col">Reference</th>
+                <th scope="col">Notes</th>
+                <th scope="col">Size in Bits</th>
+                <th scope="col">Scope</th>
+                <th scope="col">Values</th>
+                <th scope="col">Delete?</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% if "Structures" in session and "Enums" in session["Structures"]%}
+            {% for entry in session["Structures"]["Enums"] %}
+            <tr>
+                <td id="enum{{ loop.index0 }}">{{ entry["name"] }}</td>
+                <td>{{ entry["reference"] }}</td>
+                <td>{{ entry["notes"] }}</td>
+                <td>{{ entry["size"] }}</td>
+                <td>{{ entry["scope"] }}</td>
+                <td>
+                    <ol>
+                        {% for field in entry["fields"] %}
+                        <li value='{{ field["value"] }}'>
+                            <dl>
+                                <dt>{{ field["name"] }}<br />(Logged as "{{ field["loggingValue"] }}")</dt>
+                                <dd>{{ field["notes"] }}</dd>
+                            </dl>
+                        </li>
+                        {% endfor %}
+                    </ol>
+                </td>
+                <td class="centeredText confirmDelete"><a href="{{ url_for('main.removeEnum', index=loop.index0) }}">X</a></td>
+            </tr>
+            {% endfor %}
+        {% endif %}
+        </tbody>
+    </table>
+    <div class="buttonRow">
+        <a href="#" class="ui-button ui-widget ui-corner-all addEnumButton">Add Enum</a>
+    </div>
+  </div>
+</div>
+
+<!-- Dialogs -->
+<div id="addEnumDialog" class="dialog" title="Add Enum">
+    <form method="POST" action="{{ url_for('main.addEnum') }}">
+        {{ addEnumForm.csrf_token }}
+        
+        <!-- Name -->
+        <p class="fieldSet">
+            {{ addEnumForm.enumName.label }}
+            {{ addEnumForm.enumName }}
+        </p>
+        {% if addEnumForm.enumName.error %}
+        <div class="ui-widget">
+	        <div class="ui-state-error ui-corner-all">
+		        <p class="errorLabel"><span class="ui-icon ui-icon-alert"></span>Error:</p>
+		        <ul class="errors">
+                {% for error in addEnumForm.enumName.error %}
+                    <li>{{ error }}</li>
+                {% endfor %}
+                </ul>
+	        </div>
+        </div>
+        {% endif %}
+        <!-- End Name -->
+        
+        <!-- Reference -->
+        <p class="fieldSet">
+            {{ addEnumForm.enumReference.label }}
+            {{ addEnumForm.enumReference }}
+        </p>
+        {% if addEnumForm.enumReference.error %}
+        <div class="ui-widget">
+	        <div class="ui-state-error ui-corner-all">
+		        <p class="errorLabel"><span class="ui-icon ui-icon-alert"></span>Error:</p>
+		        <ul class="errors">
+                {% for error in addEnumForm.enumReference.error %}
+                    <li>{{ error }}</li>
+                {% endfor %}
+                </ul>
+	        </div>
+        </div>
+        {% endif %}
+        <!-- End Reference -->
+        
+        <!-- Note -->
+        <p class="fieldSet">
+            {{ addEnumForm.enumNote.label }}
+            {{ addEnumForm.enumNote }}
+        </p>
+        {% if addEnumForm.enumNote.error %}
+        <div class="ui-widget">
+	        <div class="ui-state-error ui-corner-all">
+		        <p class="errorLabel"><span class="ui-icon ui-icon-alert"></span>Error:</p>
+		        <ul class="errors">
+                {% for error in addEnumForm.enumNote.error %}
+                    <li>{{ error }}</li>
+                {% endfor %}
+                </ul>
+	        </div>
+        </div>
+        {% endif %}
+        <!-- End Note -->
+        
+        <!-- Scope -->
+        <p class="fieldSet">
+            {{ addEnumForm.enumScope.label }}
+            {{ addEnumForm.enumScope }}
+        </p>
+        {% if addEnumForm.enumScope.error %}
+        <div class="ui-widget">
+	        <div class="ui-state-error ui-corner-all">
+		        <p class="errorLabel"><span class="ui-icon ui-icon-alert"></span>Error:</p>
+		        <ul class="errors">
+                {% for error in addEnumForm.enumScope.error %}
+                    <li>{{ error }}</li>
+                {% endfor %}
+                </ul>
+	        </div>
+        </div>
+        {% endif %}
+        <!-- End Scope -->
+        
+        <p>Field Size must be a multiple of 8 bits</p>
+        
+        <!-- Size -->
+        <p class="fieldSet">
+            {{ addEnumForm.enumSize.label }}
+            {{ addEnumForm.enumSize }}
+        </p>
+        {% if addEnumForm.enumSize.error %}
+        <div class="ui-widget">
+	        <div class="ui-state-error ui-corner-all">
+		        <p class="errorLabel"><span class="ui-icon ui-icon-alert"></span>Error:</p>
+		        <ul class="errors">
+                {% for error in addEnumForm.enumSize.error %}
+                    <li>{{ error }}</li>
+                {% endfor %}
+                </ul>
+	        </div>
+        </div>
+        {% endif %}
+        <!-- End Size -->
+        
+        <hr />
+        <p id="fieldLimits">Between {{ addEnumForm.fields.min_entries }} and {{ addEnumForm.fields.max_entries }} fields must be provided.</p>
+        {% set fieldsText = addEnumForm.fields|length %}
+        {% if fieldsText != 1 %}
+            {% set fieldsText = fieldsText|string + " fields are" %}
+        {% else %}
+            {% set fieldsText = fieldsText|string + " field is" %}
+        {% endif %}
+        <p id="currentFieldCount"><span id="fieldCounterSpace">{{fieldsText}}</span> currently defined.</p>
+        <!-- Start Field List -->
+        <div id="enumFields">
+            {% for field in addEnumForm.fields %}
+                <p class="fieldSet" id="fieldSet-{{loop.index0}}">
+                    <a href="#" id="removeFieldSet-{{loop.index0}}" onclick="removeEnumField({{ loop.index0 }});">X</a>
+                    {{ field.fieldName.label }}
+                    {{ field.fieldName(size=15) }}<br />
+                    {{ field.loggingValue.label }}
+                    {{ field.loggingValue(size=15) }}<br />
+                    {{ field.fieldValue.label }}
+                    {{ field.fieldValue(size=2) }}<br />
+                    {{ field.fieldNote.label }}
+                    {{ field.fieldNote }}
+                </p>
+                {% if field.fieldName.error %}
+                <div class="ui-widget">
+	                <div class="ui-state-error ui-corner-all">
+		                <p class="errorLabel"><span class="ui-icon ui-icon-alert"></span>Error:</p>
+		                <ul class="errors">
+                        {% for error in field.fieldName.error %}
+                            <li>{{ error }}</li>
+                        {% endfor %}
+                        </ul>
+	                </div>
+                </div>
+                {% endif %}
+                {% if field.fieldValue.error %}
+                <div class="ui-widget">
+	                <div class="ui-state-error ui-corner-all">
+		                <p class="errorLabel"><span class="ui-icon ui-icon-alert"></span>Error:</p>
+		                <ul class="errors">
+                        {% for error in field.fieldValue.error %}
+                            <li>{{ error }}</li>
+                        {% endfor %}
+                        </ul>
+	                </div>
+                </div>
+                {% endif %}
+            {% endfor %}
+        </div>
+        <!-- End Field List -->
+        <a href="#" class="ui-button ui-widget ui-corner-all" onclick="addEnumField();">Add Enum Field</a>
+        <hr />
+        <input type="submit" value="Add Enum" class="ui-button ui-widget ui-corner-all" />
+    </form>
+</div>
+{% endblock content %}
+
+{% block additionalJavascript %}
+<script>
+const maxEnumFields = {{ addEnumForm.fields.max_entries }};
+var currentEnumFields = {{ addEnumForm.fields|length }};
+var nextEnumFieldIndex = {{ addEnumForm.fields|length }};
+
+function updateEnumFieldCount() {
+    text = currentEnumFields;
+    if(1 == text)
+    {
+        text = text + " field is";
+    }
+    else
+    {
+        text = text + " fields are";
+    }
+    $("#fieldCounterSpace").html(text);
+}
+
+function addEnumField() {
+    currentHTML = $("#enumFields").html();
+    currentNameValues = $("#enumFields [id$='fieldName']")
+    currentLoggingValueValues = $("#enumFields [id$='loggingValue']")
+    currentValueValues = $("#enumFields [id$='fieldValue']")
+    currentNoteValues = $("#enumFields [id$='fieldNote']")
+    
+    fieldNameID = "fields-" + nextEnumFieldIndex + "-fieldName";
+    loggingValueID = "fields-" + nextEnumFieldIndex + "-loggingValue";
+    fieldValueID = "fields-" + nextEnumFieldIndex + "-fieldValue";
+    fieldNoteID = "fields-" + nextEnumFieldIndex + "-fieldNote";
+    
+    currentHTML += "\n<p class=\"fieldSet\" id=\"fieldSet-" + nextEnumFieldIndex + "\">";
+    currentHTML += "<a href=\"#\" id=\"removeFieldSet-" + nextEnumFieldIndex + "\" onclick=\"removeEnumField(" + nextEnumFieldIndex + ");\">X</a>\n";
+    currentHTML += "<label for=\"" + fieldNameID + "\">Field Name: </label>";
+    currentHTML += "<input id=\"" + fieldNameID + "\" name=\"" + fieldNameID + "\" required size=\"15\" type=\"text\"><br />";
+    currentHTML += "<label for=\"" + loggingValueID + "\">Value to Appear in the Log: </label>";
+    currentHTML += "<input id=\"" + loggingValueID + "\" name=\"" + loggingValueID + "\" required size=\"15\" type=\"text\"><br />";
+    currentHTML += "<label for=\"" + fieldValueID + "\">Field Value: </label>";
+    currentHTML += "<input id=\"" + fieldValueID + "\" name=\"" + fieldValueID + "\" required size=\"2\" type=\"number\" value=\"\"><br />";
+    currentHTML += "<label for=\"" + fieldNoteID + "\">Field Note: </label>";
+    currentHTML += "<input id=\"" + fieldNoteID + "\" name=\"" + fieldNoteID + "\" type=\"text\">";
+    currentHTML += "</p>\n"
+    currentHTML = $("#enumFields").html(currentHTML);
+    ++currentEnumFields;
+    ++nextEnumFieldIndex;
+    updateEnumFieldCount();
+    
+    currentNameValues.each(function(){
+        currentID = $(this).attr("id");
+        currentValue = $(this).val();
+        $("#" + currentID).val(currentValue);
+    });
+    
+    currentLoggingValueValues.each(function(){
+        currentID = $(this).attr("id");
+        currentValue = $(this).val();
+        $("#" + currentID).val(currentValue);
+    });
+    
+    currentValueValues.each(function(){
+        currentID = $(this).attr("id");
+        currentValue = $(this).val();
+        $("#" + currentID).val(currentValue);
+    });
+    
+    currentNoteValues.each(function(){
+        currentID = $(this).attr("id");
+        currentValue = $(this).val();
+        $("#" + currentID).val(currentValue);
+    });
+}
+
+function removeEnumField(fieldNumber) {
+    $("#fieldSet-" + fieldNumber).remove();
+    --currentEnumFields;
+    updateEnumFieldCount();
+}
+
+$(function() {
+	
+	const buttonsAndDialogs = ["addEnum"];
+
+	for(let i = 0; i < buttonsAndDialogs.length; ++i)
+	{
+	    let value = buttonsAndDialogs[i];
+        $('#' + value + 'Dialog').dialog(dialogInitializationValue);
+        $('.' + value + 'Button').click(function(event) {
+            loadForm(event, value + 'Dialog');
+        });
+	}
+	
+	$(".confirmDelete").click(function(){
+        return confirm("Are you sure you want to delete?");
+    })
+});
+</script>
+{% endblock additionalJavascript %}
