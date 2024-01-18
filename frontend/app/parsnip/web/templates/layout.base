@@ -1,0 +1,126 @@
+<!-- Copyright 2024, Battelle Energy Alliance, LLC, ALL RIGHTS RESERVED -->
+
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <!-- Required Meta Tags -->
+        <meta charset="utf-8" />
+        <meta name="viewport"
+              content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+
+        <!-- Page Title -->
+        {%- set actualTitle = "PARSNIP" -%}
+        {%- if title -%}
+            {%- set actualTitle = actualTitle + " - " + title -%}
+        {%- endif -%}
+        <title>{{actualTitle}}</title>
+
+        <!-- Page Resources -->
+        <!--<link rel="icon" href="{{ url_for('static', filename='favicon.png') }}" />-->
+        <link rel="stylesheet" type="text/css" href="//code.jquery.com/ui/1.13.2/themes/humanity/jquery-ui.css" />
+        <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/styles.css') }}" />
+        <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/sm-core-css.css') }}" />
+        <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/sm-custom.css') }}" />
+        <!--<link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/jquery-confirm.min.css') }}" />-->
+        
+        {% block additionalHeader %}{% endblock additionalHeader %}
+    </head>
+    <body>
+        <header role="banner" class="">
+            <h1>PARSNIP</h1>
+        </header>
+        <nav role="navigation" class="">
+            <ul id="mainMenu" class="sm sm-custom">
+                <li><a href="#">File</a>
+                    <ul>
+                        <li><a href="#" class="uploadSnapshotButton">Import Snapshot</a></li>
+                        <li><a href="{{ url_for('main.exportData', exportType='snapshot') }}">Export Snapshot</a></li>
+                    </ul>
+                </li>
+                <li><a href="{{ url_for('main.index') }}">Instructions</a></li>
+                <li><a href="{{ url_for('main.config') }}">Parser Configuration</a></li>
+                <li><a href="#">View/Edit Components</a>
+                    <ul>
+                        <li><a href="{{ url_for('main.enums') }}">Enums</a></li>
+                        <li><a href="{{ url_for('main.bitfields') }}">Bitfields</a></li>
+                        <li><a href="{{ url_for('main.objects') }}">Objects</a></li>
+                        <li><a href="{{ url_for('main.switches') }}">Choices</a></li>
+                    </ul>
+                </li>
+                <li><a href="{{ url_for('main.review') }}">Review</a></li>
+                <li><a href="{{ url_for('main.exportData',exportType='parsnip')}}">Export Parsnip Files</a></li>
+                <li><a href="{{ url_for('main.notice') }}">Notice</a></li>
+            </ul>
+        </nav>
+        <hr />
+        <main role="main" class="">
+            {% block content %}{% endblock content %}
+        </main>
+        <footer role="contentinfo" class="">
+            &copy; {{years}}, Battelle Energy Alliance, LLC, ALL RIGHTS RESERVED
+        </footer>
+
+        <!-- Dialogs -->
+
+        <div id="uploadSnapshotDialog" class="dialog" title="Upload Snapshot">
+            <form method="POST" action="{{ url_for('main.importData', importType='snapshot') }}" enctype="multipart/form-data">
+                {{ uploadSnapshotForm.csrf_token }}
+                
+                <!-- Snapshot File -->
+                <p class="fieldSet">
+                    {{ uploadSnapshotForm.snapshot.label }}
+                    {{ uploadSnapshotForm.snapshot }}
+                </p>
+                {% if uploadSnapshotForm.snapshot.error %}
+                <div class="ui-widget">
+	                <div class="ui-state-error ui-corner-all">
+		                <p class="errorLabel"><span class="ui-icon ui-icon-alert"></span>Error:</p>
+		                <ul class="errors">
+                        {% for error in uploadSnapshotForm.snapshot.error %}
+                            <li>{{ error }}</li>
+                        {% endfor %}
+                        </ul>
+	                </div>
+                </div>
+                {% endif %}
+                <!-- End Snapshot File -->
+                <input type="submit" value="Upload Snapshot" class="ui-button ui-widget ui-corner-all" />
+            </form>
+        </div>
+        <!-- Javascript Includes -->
+        <script src="//code.jquery.com/jquery-3.7.0.min.js" crossorigin="anonymous"></script>
+        <script src="//code.jquery.com/ui/1.13.2/jquery-ui.min.js" crossorigin="anonymous"></script>
+        <script src="{{ url_for('static', filename='js/jquery.smartmenus.js') }}"></script>
+        <!--<script src="{{ url_for('static', filename='js/jquery-confirm.min.js') }}"></script> -->
+        <script>
+            const dialogInitializationValue =
+            {
+                autoOpen: false,
+                width: 600
+            }
+            function loadForm(event, dialogID) {
+                $("#" + dialogID).dialog( "open" );
+                event.preventDefault();
+            }
+            $(function() {
+                $('#mainMenu').smartmenus();
+                
+                const buttonsAndDialogs = ["uploadSnapshot"];
+
+	            for(let i = 0; i < buttonsAndDialogs.length; ++i)
+	            {
+	                let value = buttonsAndDialogs[i];
+                    $('#' + value + 'Dialog').dialog(dialogInitializationValue);
+                    $('.' + value + 'Button').click(function(event) {
+                        loadForm(event, value + 'Dialog');
+                    });
+	            }
+            });
+        </script>
+        {% block additionalJavascript %}{% endblock additionalJavascript %}
+    </body>
+</html>
+
+<!--
+vim: ai si syntax=html tabstop=4 shiftwidth=4 expandtab colorcolumn=81:
+-->

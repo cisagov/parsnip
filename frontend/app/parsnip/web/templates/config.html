@@ -1,0 +1,292 @@
+{# Copyright 2024, Battelle Energy Alliance, LLC, ALL RIGHTS RESERVED #}
+
+{% set years = "2024" %}
+
+{% import 'macros.j2' as macros -%}
+
+{% extends "layout.base" %}
+
+{% block additionalHeader %}
+{% endblock additionalHeader %}
+
+{% block content %}
+<h2>Parser Configuration</h2>
+<div id="viewConfigTabs">
+  <ul>
+    <li><a href="#parserConfigTab">General Parser Configuration</a></li>
+    <li><a href="#portsTab">Protocol Ports</a></li>
+    <li><a href="#userTypesTab">User Types</a></li>
+  </ul>
+  <div id="parserConfigTab">
+    <h3>General Parser Configuration</h3>
+    <table id="parserConfigTable" class="infoTable">
+        <thead>
+            <tr>
+                <th scope="col">Option Name</th>
+                <th scope="col">Option Value</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>Protocol Name</td>
+                <td>{{ session["Protocol"] }}</td>
+            </tr>
+            <tr>
+                <td>Parser Entry Point</td>
+                <td>{{ session["EntryPoint"] }}</td>
+            </tr>
+            <tr>
+                <td>Uses TCP? </td>
+{%- set usesTCP = False -%}
+{%- if session["usesTCP"] -%}
+    {%- set usesTCP = session["usesTCP"] -%}
+{%- endif -%}
+                <td>{{ usesTCP }}</td>
+            </tr>
+            <tr>
+                <td>Uses UDP? </td>
+{%- set usesUDP = False -%}
+{%- if session["usesUDP"] -%}
+    {%- set usesUDP = session["usesUDP"] -%}
+{%- endif -%}
+                <td>{{ usesUDP }}</td>
+            </tr>
+        </tbody>
+    </table>
+    <div class="buttonRow">
+        <a href="#" class="ui-button ui-widget ui-corner-all editParserConfigButton">Edit Parser Configuration</a>
+    </div>
+  </div>
+  <div id="portsTab">
+    <h3>Protocol Ports</h3>
+    <table id="userTypesTable" class="infoTable">
+        <thead>
+            <tr>
+                <th scope="col">Parent Network Protocol</th>
+                <th scope="col">Port</th>
+                <th scope="col">Delete?</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% if "Ports" in session %}
+            {% for entry in session["Ports"] %}
+            <tr>
+                <td>{{ entry["protocol"] }}</td>
+                <td>{{ entry["port"] }}</td>
+                <td class="centeredText confirmDelete"><a href="{{ url_for('main.removePort', index=loop.index0) }}">X</a></td>
+            </tr>
+            {% endfor %}
+        {% endif %}
+        </tbody>
+    </table>
+    <div class="buttonRow">
+        <a href="#" class="ui-button ui-widget ui-corner-all addPortButton">Add Port</a>
+    </div>
+  </div>
+  <div id="userTypesTab">
+    <h3>User Types</h3>
+    <div class="buttonRow">
+        <a href="#" class="ui-button ui-widget ui-corner-all addUserTypeButton">Add User Type</a>
+    </div>
+    <table id="userTypesTable" class="infoTable">
+        <thead>
+            <tr>
+                <th scope="col">Type Name</th>
+                <th scope="col">Type Interpretation Function Name</th>
+                <th scope="col">Function Return Type</th>
+                <th scope="col">Delete?</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% if "CustomFieldTypes" in session %}
+            {% for entry in session["CustomFieldTypes"] %}
+            <tr>
+                <td>{{ entry["name"] }}</td>
+                <td>{{ entry["interpretingFunction"] }}</td>
+                <td>{{ entry["returnType"] }}</td>
+                <td class="centeredText confirmDelete"><a href="{{ url_for('main.removeUserType', index=loop.index0) }}">X</a></td>
+            </tr>
+            {% endfor %}
+        {% endif %}
+        </tbody>
+    </table>
+    <div class="buttonRow">
+        <a href="#" class="ui-button ui-widget ui-corner-all addUserTypeButton">Add User Type</a>
+    </div>
+  </div>
+</div>
+
+<!-- Dialogs -->
+<div id="editParserConfigDialog" class="dialog" title="Edit Parser Configuration">
+    <form method="POST" action="{{ url_for('main.editConfig') }}">
+        {{ editConfigForm.csrf_token }}
+        
+        <!-- Parser Name -->
+        <p>Notes:</p>
+        <ul>
+            <li>The first character must be a letter or an underscore</li>
+            <li>Additional characters may be a letter, number, or underscore</li>
+        </ul>
+        <p class="fieldSet">
+            {{ editConfigForm.parserName.label }}
+            {{ editConfigForm.parserName }}
+        </p>
+        {% if editConfigForm.parserName.error %}
+        <div class="ui-widget">
+	        <div class="ui-state-error ui-corner-all">
+		        <p class="errorLabel"><span class="ui-icon ui-icon-alert"></span>Error:</p>
+		        <ul class="errors">
+                {% for error in editConfigForm.parserName.error %}
+                    <li>{{ error }}</li>
+                {% endfor %}
+                </ul>
+	        </div>
+        </div>
+        {% endif %}
+        <!-- End Parser Name -->
+        
+        <!-- Entry Point -->
+        <p class="fieldSet">
+            {{ editConfigForm.entryPoint.label }}
+            {{ editConfigForm.entryPoint }}
+        </p>
+        <!-- End Entry Point -->
+        
+        <!-- Uses TCP -->
+        <p class="fieldSet">
+            {{ editConfigForm.usesTCP.label }}
+            {{ editConfigForm.usesTCP }}
+        </p>
+        <!-- End Uses TCP -->
+        
+        <!-- Uses UDP -->
+        <p class="fieldSet">
+            {{ editConfigForm.usesUDP.label }}
+            {{ editConfigForm.usesUDP }}
+        </p>
+        <!-- End Uses UDP -->
+        
+        <input type="submit" value="Save Configuration" class="ui-button ui-widget ui-corner-all" />
+    </form>
+</div>
+
+<div id="addPortDialog" class="dialog" title="Add Protocol Port">
+    <form method="POST" action="{{ url_for('main.addPort') }}">
+        {{ addPortForm.csrf_token }}
+        
+        <!-- Parent Protocol -->
+        <p class="fieldSet">
+            {{ addPortForm.protocolName.label }}
+            {{ addPortForm.protocolName }}
+        </p>
+        <!-- End Parent Protocol -->
+        
+        <!-- Port Number -->
+        <p class="fieldSet">
+            {{ addPortForm.portNumber.label }}
+            {{ addPortForm.portNumber }}
+        </p>
+        {% if addPortForm.portNumber.error %}
+        <div class="ui-widget">
+	        <div class="ui-state-error ui-corner-all">
+		        <p class="errorLabel"><span class="ui-icon ui-icon-alert"></span>Error:</p>
+		        <ul class="errors">
+                {% for error in addPortForm.portNumber.error %}
+                    <li>{{ error }}</li>
+                {% endfor %}
+                </ul>
+	        </div>
+        </div>
+        {% endif %}
+        <!-- End Port Number -->
+        
+        <input type="submit" value="Add Port" class="ui-button ui-widget ui-corner-all" />
+    </form>
+</div>
+
+<div id="addUserTypeDialog" class="dialog" title="Add User Type">
+    <form method="POST" action="{{ url_for('main.addUserType') }}">
+        {{ addUserTypeForm.csrf_token }}
+        
+        <!-- Type Name -->
+        <p>Notes:</p>
+        <ul>
+            <li>The first character must be a letter or an underscore</li>
+            <li>Additional characters may be a letter, number, underscore, or hyphen</li>
+        </ul>
+        <p class="fieldSet">
+            {{ addUserTypeForm.typeName.label }}
+            {{ addUserTypeForm.typeName }}
+        </p>
+        {% if addUserTypeForm.typeName.error %}
+        <div class="ui-widget">
+	        <div class="ui-state-error ui-corner-all">
+		        <p class="errorLabel"><span class="ui-icon ui-icon-alert"></span>Error:</p>
+		        <ul class="errors">
+                {% for error in addUserTypeForm.typeName.error %}
+                    <li>{{ error }}</li>
+                {% endfor %}
+                </ul>
+	        </div>
+        </div>
+        {% endif %}
+        <!-- End Type Name -->
+        
+        <!-- Interpreting Function -->
+        <p>Notes:</p>
+        <ul>
+            <li>The first character must be a letter or an underscore</li>
+            <li>Additional characters may be a letter, number, or underscore</li>
+        </ul>
+        <p class="fieldSet">
+            {{ addUserTypeForm.interpretingFunction.label }}
+            {{ addUserTypeForm.interpretingFunction }}
+        </p>
+        {% if addUserTypeForm.interpretingFunction.error %}
+        <div class="ui-widget">
+	        <div class="ui-state-error ui-corner-all">
+		        <p class="errorLabel"><span class="ui-icon ui-icon-alert"></span>Error:</p>
+		        <ul class="errors">
+                {% for error in addUserTypeForm.interpretingFunction.error %}
+                    <li>{{ error }}</li>
+                {% endfor %}
+                </ul>
+	        </div>
+        </div>
+        {% endif %}
+        <!-- End Interpreting Function -->
+        
+        <!-- Return Type -->
+        <p class="fieldSet">
+            {{ addUserTypeForm.returnType.label }}
+            {{ addUserTypeForm.returnType }}
+        </p>
+        <!-- End Return Type -->
+        
+        <input type="submit" value="Add User Type" class="ui-button ui-widget ui-corner-all" />
+    </form>
+</div>
+{% endblock content %}
+
+{% block additionalJavascript %}
+<script>
+$(function() {
+	$('#viewConfigTabs').tabs();
+	
+	const buttonsAndDialogs = ["editParserConfig", "addPort", "addUserType"];
+
+	for(let i = 0; i < buttonsAndDialogs.length; ++i)
+	{
+	    let value = buttonsAndDialogs[i];
+        $('#' + value + 'Dialog').dialog(dialogInitializationValue);
+        $('.' + value + 'Button').click(function(event) {
+            loadForm(event, value + 'Dialog');
+        });
+	}
+	
+	$(".confirmDelete").click(function(){
+        return confirm("Are you sure you want to delete?");
+    })
+});
+</script>
+{% endblock additionalJavascript %}

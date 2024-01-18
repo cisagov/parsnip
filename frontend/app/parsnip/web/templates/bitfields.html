@@ -1,0 +1,410 @@
+{# Copyright 2024, Battelle Energy Alliance, LLC, ALL RIGHTS RESERVED #}
+
+{% set years = "2024" %}
+
+{% import 'macros.j2' as macros -%}
+
+{% extends "layout.base" %}
+
+{% block additionalHeader %}
+{% endblock additionalHeader %}
+
+{% block content %}
+<h2>Parser Bitfields</h2>
+<div class="ui-widget-content">
+    <div class="buttonRow">
+        <a href="#" class="ui-button ui-widget ui-corner-all addBitfieldButton">Add Bitfield</a>
+    </div>
+    <table id="objecsTable" class="infoTable">
+        <thead>
+            <tr>
+                <th scope="col">Name</th>
+                <th scope="col">Reference</th>
+                <th scope="col">Notes</th>
+                <th scope="col">Size in Bits</th>
+                <th scope="col">Scope</th>
+                <th scope="col">Values</th>
+                <th scope="col">Delete?</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% if "Structures" in session and "Bitfields" in session["Structures"]%}
+            {% for entry in session["Structures"]["Bitfields"] %}
+            <tr>
+                <td id="bitfield{{ loop.index0 }}">{{ entry["name"] }}</td>
+                <td>{{ entry["reference"] }}</td>
+                <td>{{ entry["notes"] }}</td>
+                <td>{{ entry["size"] }}</td>
+                <td>{{ entry["scope"] }}</td>
+                <td>
+                    <ol>
+                        {% for field in entry["fields"] %}
+                        <li value='{{ field["value"] }}'>
+                            <dl>
+                                <dt>{{ field["name"] }}</dt>
+                                <dd>
+                                    <ul>
+                                        <li>Description: {{ field["description"] }}</li>
+                                        <li>Note: {{ field["notes"] }}</li>
+                                        <li>Type: {{ field["type"] }}</li>
+                            {%- if "referenceType" in field -%}
+                                {%- set referenceTypeIndex = findStructureItemIndex(field["type"], field["referenceType"]) -%}
+                                {%- if "enum" == field["type"] and -1 != referenceTypeIndex -%}
+                                    {%- set startString = ('<a href="' + url_for('main.enums') + "#enum" + referenceTypeIndex|string + '">')|safe -%}
+                                    {%- set endString = '</a>'|safe -%}
+                                {%- else -%}
+                                    {%- set startString = "" -%}
+                                    {%- set endString = "" -%}
+                                {%- endif %}
+                                        <li>Reference: {{ startString }}{{ field["referenceType"] }}{{ endString }}</li>
+                            {%- endif %}
+                                        <li>Bits: {{ field["bits"] }}</li>
+                                    </ul>
+                                </dd>
+                            </dl>
+                        </li>
+                        {% endfor %}
+                    </ol>
+                </td>
+                <td class="centeredText confirmDelete"><a href="{{ url_for('main.removeBitfield', index=loop.index0) }}">X</a></td>
+            </tr>
+            {% endfor %}
+        {% endif %}
+        </tbody>
+    </table>
+    <div class="buttonRow">
+        <a href="#" class="ui-button ui-widget ui-corner-all addBitfieldButton">Add Bitfield</a>
+    </div>
+  </div>
+</div>
+
+<!-- Dialogs -->
+<div id="addBitfieldDialog" class="dialog" title="Add Bitfield">
+    <form method="POST" action="{{ url_for('main.addBitfield') }}">
+        {{ addBitfieldForm.csrf_token }}
+        
+        <!-- Bitfield Name -->
+        <p class="fieldSet">
+            {{ addBitfieldForm.bitfieldName.label }}
+            {{ addBitfieldForm.bitfieldName }}
+        </p>
+        {% if addBitfieldForm.bitfieldName.error %}
+        <div class="ui-widget">
+	        <div class="ui-state-error ui-corner-all">
+		        <p class="errorLabel"><span class="ui-icon ui-icon-alert"></span>Error:</p>
+		        <ul class="errors">
+                {% for error in addBitfieldForm.bitfieldName.error %}
+                    <li>{{ error }}</li>
+                {% endfor %}
+                </ul>
+	        </div>
+        </div>
+        {% endif %}
+        <!-- End Bitfield Name -->
+        
+        <!-- Bitfield Reference -->
+        <p class="fieldSet">
+            {{ addBitfieldForm.bitfieldReference.label }}
+            {{ addBitfieldForm.bitfieldReference }}
+        </p>
+        <!-- End Bitfield Reference -->
+        
+        <!-- Bitfield Note -->
+        <p class="fieldSet">
+            {{ addBitfieldForm.bitfieldNote.label }}
+            {{ addBitfieldForm.bitfieldNote }}
+        </p>
+        <!-- End Bitfield Note -->
+        <p>Field Size must be a multiple of 8 bits</p>
+        <!-- Size -->
+        <p class="fieldSet">
+            {{ addBitfieldForm.bitfieldSize.label }}
+            {{ addBitfieldForm.bitfieldSize }}
+        </p>
+        {% if addBitfieldForm.bitfieldSize.error %}
+        <div class="ui-widget">
+	        <div class="ui-state-error ui-corner-all">
+		        <p class="errorLabel"><span class="ui-icon ui-icon-alert"></span>Error:</p>
+		        <ul class="errors">
+                {% for error in addBitfieldForm.bitfieldSize.error %}
+                    <li>{{ error }}</li>
+                {% endfor %}
+                </ul>
+	        </div>
+        </div>
+        {% endif %}
+        <!-- End Size -->
+        
+        <hr />
+        <p>Bits within a bitfield are 0-index and Big-Endian (Bit size - 1 is the left most bit and Bit 0 is the right most bit). Starting and Ending Bit Numbers in inclusive.</p>
+        <p id="fieldLimits2">Between {{ addBitfieldForm.fields.min_entries }} and {{ addBitfieldForm.fields.max_entries }} fields must be provided.</p>
+        {% set fieldsText = addBitfieldForm.fields|length %}
+        {% if fieldsText != 1 %}
+            {% set fieldsText = fieldsText|string + " fields are" %}
+        {% else %}
+            {% set fieldsText = fieldsText|string + " field is" %}
+        {% endif %}
+        <p id="currentFieldCount2"><span id="fieldCounterSpace2">{{fieldsText}}</span> currently defined.</p>
+        <!-- Start Field List -->
+        <div id="bitfieldFields">
+            {% for field in addBitfieldForm.fields %}
+                <p class="fieldSet" id="bitfieldFieldSet-{{loop.index0}}">
+                    <a href="#" id="removeBitfieldFieldSet-{{loop.index0}}" onclick="removeBitfieldField({{ loop.index0 }});">X</a>
+                    {{ field.fieldName.label }}
+                    {{ field.fieldName(size=15) }}<br />
+                    {{ field.fieldDescription.label }}
+                    {{ field.fieldDescription }}<br />
+                    {{ field.fieldNote.label }}
+                    {{ field.fieldNote }}<br />
+                    {{ field.fieldType.label }}
+                    {{ field.fieldType(onchange="updateFieldType(" + loop.index0|string + ")") }}<br />
+                    {{ field.referenceType.label }}
+                    {{ field.referenceType }}<br />
+                    {{ field.bit.label }}
+                    {{ field.bit }}<br />
+                    {{ field.startingBit.label }}
+                    {{ field.startingBit }}<br />
+                    {{ field.endingBit.label }}
+                    {{ field.endingBit }}
+                </p>
+                {% if field.fieldName.error %}
+                <div class="ui-widget">
+	                <div class="ui-state-error ui-corner-all">
+		                <p class="errorLabel"><span class="ui-icon ui-icon-alert"></span>Error:</p>
+		                <ul class="errors">
+                        {% for error in field.fieldName.error %}
+                            <li>{{ error }}</li>
+                        {% endfor %}
+                        </ul>
+	                </div>
+                </div>
+                {% endif %}
+                {% if field.fieldDescription.error %}
+                <div class="ui-widget">
+	                <div class="ui-state-error ui-corner-all">
+		                <p class="errorLabel"><span class="ui-icon ui-icon-alert"></span>Error:</p>
+		                <ul class="errors">
+                        {% for error in field.fieldDescription.error %}
+                            <li>{{ error }}</li>
+                        {% endfor %}
+                        </ul>
+	                </div>
+                </div>
+                {% endif %}
+            {% endfor %}
+        </div>
+        <!-- End Field List -->
+        <a href="#" class="ui-button ui-widget ui-corner-all" onclick="addBitfieldField();">Add Bitfield Field</a>
+        <hr />
+        <input type="submit" value="Add Bitfield Structure" class="ui-button ui-widget ui-corner-all" />
+    </form>
+</div>
+{% endblock content %}
+
+{% block additionalJavascript %}
+<script>
+function updateBitfieldFieldCount() {
+    text = currentBitfieldFields;
+    if(1 == text)
+    {
+        text = text + " field is";
+    }
+    else
+    {
+        text = text + " fields are";
+    }
+    $("#fieldCounterSpace2").html(text);
+}
+
+function addBitfieldField() {
+    currentHTML = $("#bitfieldFields").html();
+    
+    currentNameValues = $("#bitfieldFields [id$='fieldName']")
+    currentDescriptionValues = $("#bitfieldFields [id$='fieldDescription']")
+    currentNoteValues = $("#bitfieldFields [id$='fieldNote']")
+    currentTypeValues = $("#bitfieldFields [id$='fieldType']")
+    currentReferenceTypeValues = $("#bitfieldFields [id$='referenceType']")
+    currentBitValues = $("#bitfieldFields [id$='bit']")
+    currentStartingBitValues = $("#bitfieldFields [id$='startingBit']")
+    currentEndingBitValues = $("#bitfieldFields [id$='endingBit']")
+    
+    fieldNameID = "fields-" + nextBitfieldFieldIndex + "-fieldName";
+    fieldDescriptionID = "fields-" + nextBitfieldFieldIndex + "-fieldDescription";
+    fieldNoteID = "fields-" + nextBitfieldFieldIndex + "-fieldNote";
+    fieldTypeID = "fields-" + nextBitfieldFieldIndex + "-fieldType";
+    fieldReferenceTypeID = "fields-" + nextBitfieldFieldIndex + "-referenceType";
+    fieldBitID = "fields-" + nextBitfieldFieldIndex + "-bit";
+    fieldStartingBitID = "fields-" + nextBitfieldFieldIndex + "-startingBit";
+    fieldEndingBitID = "fields-" + nextBitfieldFieldIndex + "-endingBit";
+    
+    currentHTML += "\n<p class=\"fieldSet\" id=\"bitfieldFieldSet-" + nextBitfieldFieldIndex + "\">";
+    currentHTML += "<a href=\"#\" id=\"removeBitfieldFieldSet-" + nextBitfieldFieldIndex + "\" onclick=\"removeBitfieldField(" + nextBitfieldFieldIndex + ");\">X</a>\n";
+    currentHTML += "<label for=\"" + fieldNameID + "\">Field Name: </label>";
+    currentHTML += "<input id=\"" + fieldNameID + "\" name=\"" + fieldNameID + "\" required size=\"15\" type=\"text\"><br />";
+    currentHTML += "<label for=\"" + fieldDescriptionID + "\">Field Description: </label>";
+    currentHTML += "<input id=\"" + fieldDescriptionID + "\" name=\"" + fieldDescriptionID + "\" required type=\"text\"><br />";
+    currentHTML += "<label for=\"" + fieldNoteID + "\">Field Note: </label>";
+    currentHTML += "<input id=\"" + fieldNoteID + "\" name=\"" + fieldNoteID + "\" type=\"text\"><br />";
+    currentHTML += "<label for=\""+ fieldTypeID + "\">Field Type: </label>";
+    currentHTML += "<select id=\"" + fieldTypeID + "\" name=\"" + fieldTypeID + "\" onchange=\"updateFieldType(" + nextBitfieldFieldIndex + ")\">";
+    {%- for item in typeChoices -%}
+    currentHTML += "<option value='{{ item[0] }}'>{{ item[1] }}</option>";
+    {%- endfor -%}
+    currentHTML += "</select><br />";
+    currentHTML += "<label for=\"" + fieldReferenceTypeID + "\">Reference Type: </label>";
+    currentHTML += "<select id=\"" + fieldReferenceTypeID + "\" name=\"" + fieldReferenceTypeID + "\" type=\"text\">";
+    {%- for item in referenceChoices -%}
+    currentHTML += "<option value='{{ item[0] }}'>{{ item[1] }}</option>";
+    {%- endfor -%}
+    currentHTML += "</select><br />";
+    currentHTML += "<label for=\"" + fieldBitID + "\">Bit: </label>";
+    currentHTML += "<input id=\"" + fieldBitID + "\" name=\"" + fieldBitID + "\" type=\"number\"><br />";
+    currentHTML += "<label for=\"" + fieldStartingBitID + "\">Starting Bit: </label>";
+    currentHTML += "<input id=\"" + fieldStartingBitID + "\" name=\"" + fieldStartingBitID + "\" required type=\"number\"><br />";
+    currentHTML += "<label for=\"" + fieldEndingBitID + "\">Ending Bit: </label>";
+    currentHTML += "<input id=\"" + fieldEndingBitID + "\" name=\"" + fieldEndingBitID + "\" required type=\"number\">";
+    currentHTML += "</p>\n"
+    $("#bitfieldFields").html(currentHTML);
+    updateFieldType(nextBitfieldFieldIndex);
+    
+    ++currentBitfieldFields;
+    ++nextBitfieldFieldIndex;
+    updateBitfieldFieldCount();
+    
+    currentNameValues.each(function(){
+        currentID = $(this).attr("id");
+        currentValue = $(this).val();
+        $("#bitfieldFields #" + currentID).val(currentValue);
+    });
+    
+    currentDescriptionValues.each(function(){
+        currentID = $(this).attr("id");
+        currentValue = $(this).val();
+        $("#bitfieldFields #" + currentID).val(currentValue);
+    });
+    
+    currentNoteValues.each(function(){
+        currentID = $(this).attr("id");
+        currentValue = $(this).val();
+        $("#bitfieldFields #" + currentID).val(currentValue);
+    });
+    
+    currentTypeValues.each(function(){
+        currentID = $(this).attr("id");
+        currentValue = $(this).val();
+        $("#bitfieldFields #" + currentID).val(currentValue);
+    });
+    
+    currentReferenceTypeValues.each(function(){
+        currentID = $(this).attr("id");
+        currentValue = $(this).val();
+        $("#bitfieldFields #" + currentID).val(currentValue);
+    });
+    
+    currentBitValues.each(function(){
+        currentID = $(this).attr("id");
+        currentValue = $(this).val();
+        $("#bitfieldFields #" + currentID).val(currentValue);
+    });
+    
+    currentStartingBitValues.each(function(){
+        currentID = $(this).attr("id");
+        currentValue = $(this).val();
+        $("#bitfieldFields #" + currentID).val(currentValue);
+    });
+    
+    currentEndingBitValues.each(function(){
+        currentID = $(this).attr("id");
+        currentValue = $(this).val();
+        $("#bitfieldFields #" + currentID).val(currentValue);
+    });
+}
+
+function removeBitfieldField(fieldNumber) {
+    $("#bitfieldFieldSet-" + fieldNumber).remove();
+    --currentBitfieldFields;
+    updateBitfieldFieldCount();
+}
+
+function updateFieldType(index) {
+    fieldType = $('#fields-' + index + '-fieldType').val();
+    referenceID = '#fields-' + index + '-referenceType';
+    bitID = '#fields-' + index + '-bit';
+    startingBitID = '#fields-' + index + '-startingBit';
+    endingBitID = '#fields-' + index + '-endingBit';
+    
+    if ("enum" == fieldType)
+    {
+        $(referenceID).prop("disabled", false);
+        $(referenceID).show();
+        $(referenceID).labels().show();
+        $(bitID).prop("disabled", true);
+        $(bitID).hide();
+        $(bitID).labels().hide();
+        $(startingBitID).prop("disabled", false);
+        $(startingBitID).show();
+        $(startingBitID).labels().show();
+        $(endingBitID).prop("disabled", false);
+        $(endingBitID).show();
+        $(endingBitID).labels().show();
+    }
+    else if("uint" == fieldType)
+    {
+        $(referenceID).prop("disabled", true);
+        $(referenceID).hide();
+        $(referenceID).labels().hide();
+        $(bitID).prop("disabled", true);
+        $(bitID).hide();
+        $(bitID).labels().hide();
+        $(startingBitID).prop("disabled", false);
+        $(startingBitID).show();
+        $(startingBitID).labels().show();
+        $(endingBitID).prop("disabled", false);
+        $(endingBitID).show();
+        $(endingBitID).labels().show();
+    }
+    else // bool
+    {
+        $(referenceID).prop("disabled", true);
+        $(referenceID).hide();
+        $(referenceID).labels().hide();
+        $(bitID).prop("disabled", false);
+        $(bitID).show();
+        $(bitID).labels().show();
+        $(startingBitID).prop("disabled", true);
+        $(startingBitID).hide();
+        $(startingBitID).labels().hide();
+        $(endingBitID).prop("disabled", true);
+        $(endingBitID).hide();
+        $(endingBitID).labels().hide();
+    }
+}
+
+const maxBitfieldFields = {{ addBitfieldForm.fields.max_entries }};
+var currentBitfieldFields = {{ addBitfieldForm.fields | length }};
+var nextBitfieldFieldIndex = {{ addBitfieldForm.fields | length }};
+
+$(function() {
+	
+	const buttonsAndDialogs = ["addBitfield"];
+
+	for(let i = 0; i < buttonsAndDialogs.length; ++i)
+	{
+	    let value = buttonsAndDialogs[i];
+        $('#' + value + 'Dialog').dialog(dialogInitializationValue);
+        $('.' + value + 'Button').click(function(event) {
+            loadForm(event, value + 'Dialog');
+        });
+	}
+	
+	$(".confirmDelete").click(function(){
+        return confirm("Are you sure you want to delete?");
+    })
+    
+    for(let i = 0; i < {{ addBitfieldForm.fields|length }}; ++i)
+    {
+        updateFieldType(i);
+    }
+});
+</script>
+{% endblock additionalJavascript %}

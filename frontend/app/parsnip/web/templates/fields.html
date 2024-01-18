@@ -1,0 +1,785 @@
+{# Copyright 2024, Battelle Energy Alliance, LLC, ALL RIGHTS RESERVED #}
+
+{% set years = "2024" %}
+
+{% import 'macros.j2' as macros -%}
+
+{% extends "layout.base" %}
+
+{% block additionalHeader %}
+{% endblock additionalHeader %}
+
+{% macro addAddFieldForm(inputs, fields, realIndex, id, calledIndex) %}
+<div id="addField{{ id }}Dialog" class="dialog" title="Add Field">
+    <form method="POST" action="{{ url_for('main.addField', objectIndex=realIndex, displayIndex=calledIndex) }}">
+        {{ addFieldForm.csrf_token }}
+        
+        <!-- Name -->
+        <p class="fieldSet">
+            {{ addFieldForm.fieldName.label }}
+            {{ addFieldForm.fieldName }}
+        </p>
+        {% if addFieldForm.fieldName.error %}
+        <div class="ui-widget">
+	        <div class="ui-state-error ui-corner-all">
+		        <p class="errorLabel"><span class="ui-icon ui-icon-alert"></span>Error:</p>
+		        <ul class="errors">
+                {% for error in addFieldForm.fieldName.error %}
+                    <li>{{ error }}</li>
+                {% endfor %}
+                </ul>
+	        </div>
+        </div>
+        {% endif %}
+        <!-- End Name -->
+        
+        <!-- Description -->
+        <p class="fieldSet">
+            {{ addFieldForm.fieldDescription.label }}
+            {{ addFieldForm.fieldDescription }}
+        </p>
+        <!-- End Description -->
+        
+        <!-- Note -->
+        <p class="fieldSet">
+            {{ addFieldForm.fieldNote.label }}
+            {{ addFieldForm.fieldNote }}
+        </p>
+        <!-- End Note -->
+        
+        <!-- Is Conditional? -->
+        <p class="fieldSet">
+            {{ addFieldForm.isConditional.label }}
+            {{ addFieldForm.isConditional(onchange="updateConditional(" + id|string + ")") }}
+        </p>
+        <!-- End Is Conditional -->
+        
+        <!-- Conditional Indicator -->
+        <p id="conditionalSet" class="fieldSet">
+            Condition: 
+            <select id="conditionalIndicator" name="conditionalIndicator" onchange="updateConditionalValues({{ id }})">
+            {%- for input in inputs -%}
+                <option value="{{ input['name'] }}">{{ input['name'] }}</option>
+            {%- endfor -%}
+            {%- for field in fields -%}
+                {%- if "switch" != field["type"] and "object" != field["type"] -%}
+                    {%- if "bits" == field["type"] -%}
+                        {%- set bitFields = getTypeStructuresDictionary("bits") -%}
+                        {%- if field["referenceType"] in bitFields -%}
+                            {%- for tempField in bitFields[field["referenceType"]]["fields"] -%}
+                <option value="self.{{ field['name'] }}.{{ tempField['name'] }}">{{ field['name'] }}.{{ tempField['name'] }}</option>
+                            {%- endfor -%}
+                        {%- endif -%}
+                    {%- else -%}
+                <option value="self.{{ field['name'] }}">{{ field['name'] }}</option>
+                    {%- endif -%}
+                {%- endif -%}
+            {%- endfor -%}
+            </select>
+            {{ addFieldForm.conditionalOperator }}
+            {{ addFieldForm.conditionalValue }}
+            {{ addFieldForm.conditionalTextValue }}
+            {{ addFieldForm.conditionalNumberValue }}
+            {{ addFieldForm.useConditionalTextValue }}
+            {{ addFieldForm.useConditionalNumberValue }}
+        </p>
+        <!-- End Conditional Indicator -->
+        
+        <!-- Field Type -->
+        <p class="fieldSet">
+            {{ addFieldForm.fieldType.label }}
+            {{ addFieldForm.fieldType(onchange="updateFieldType(" + id|string + ")") }}
+        </p>
+        <!-- End Field Type -->
+        
+        <!-- Field Size -->
+        <p class="fieldSet">
+            {{ addFieldForm.fieldSize.label }}
+            {{ addFieldForm.fieldSize }}
+        </p>
+        <!-- End Field Size -->
+        
+        <div id="listSet">
+            <!-- Element Type -->
+            <p class="fieldSet">
+                {{ addFieldForm.elementType.label }}
+                {{ addFieldForm.elementType(onchange="updateElementType(" + id|string + ")") }}
+            </p>
+            <!-- End Element Type -->
+            
+            <!-- Until Condition Type -->
+            <p class="fieldSet">
+                {{ addFieldForm.untilConditionType.label }}
+                {{ addFieldForm.untilConditionType(onchange="updateConditionType(" + id|string + ")") }}
+            </p>
+            <!-- End Until Condition Type-->
+            
+            <!-- Until Condition Indicator -->
+            <p class="fieldSet">
+                {{ addFieldForm.untilConditionIndicator.label }}
+                <select id="untilConditionIndicator" name="untilConditionIndicator">
+                {%- for input in inputs -%}
+                    <option value="{{ input['name'] }}">{{ input['name'] }}</option>
+                {%- endfor -%}
+                {%- for field in fields -%}
+                    <option value="self.{{ field['name'] }}">{{ field['name'] }}</option>
+                {%- endfor -%}
+                </select>
+            </p>
+            <!-- End Until Condition Inidicator -->
+        </div>
+        
+        <!-- Reference Type -->
+        <p class="fieldSet">
+            {{ addFieldForm.referenceType.label }}
+            {{ addFieldForm.referenceType(onchange="updateReferenceType(" + id|string + ")") }}
+        </p>
+        <!-- End Reference Type -->
+        <hr />
+        <div id="inputs">
+        </div>
+        <hr />
+        <input type="submit" value="Add Field" class="ui-button ui-widget ui-corner-all" />
+    </form>
+</div>
+{% endmacro %}
+
+{% macro listFields(fields, realIndex, id, calledIndex) -%}
+    <div class="buttonRow">
+        <a href="#" class="ui-button ui-widget ui-corner-all addField{{ id }}Button">Add Field</a>
+    </div>
+    <table id="fieldsTable{{ id }}" class="infoTable">
+        <thead>
+            <tr>
+                <th scope="col">Name</th>
+                <th scope="col">Description</th>
+                <th scope="col">Notes</th>
+                <th scope="col">Type</th>
+                <th scope="col">Size (bits)</th>
+                <th scope="col">Reference Type</th>
+                <th scope="col">Additional Details?</th>
+                <th scope="col">Delete?</th>
+            </tr>
+        </thead>
+        <tbody>
+            {%- for entry in fields -%}
+                {%- set referenceTypeIndex = -1 -%}
+                {%- if entry["referenceType"] -%}
+                    {%- set referenceTypeIndex = findStructureItemIndex(entry["type"], entry["referenceType"]) -%}
+                {%- endif -%}
+                {%- set typeString = entry["type"] -%}
+                {%- if "list" == typeString -%}
+                    {%- set typeString = typeString + " (" + entry["elementType"] + ")" -%}
+                {%- endif -%}
+            <tr>
+                <td>{{ entry["name"] }}</td>
+                <td>{{ entry["description"] }}</td>
+                <td>{{ entry["notes"] }}</td>
+                <td>{{ typeString }}</td>
+                <td>{{ entry["size"] }}</td>
+                <td>
+                {%- if -1 != referenceTypeIndex -%}
+                    {%- set urlString = "#" -%}
+                    {%- if "object" == entry["type"] -%}
+                        {%- set urlString = url_for('main.objects') + "#object" + referenceTypeIndex|string -%}
+                    {%- elif "enum" == entry["type"] -%}
+                        {%- set urlString = url_for('main.enums') + "#enum" + referenceTypeIndex|string -%}
+                    {%- elif "bits" == entry["type"] -%}
+                        {%- set urlString = url_for('main.bitfields') + "#bitfield" + referenceTypeIndex|string -%}
+                    {%- elif "switch" == entry["type"] -%}
+                        {%- set urlString = url_for('main.switches') + "#switch" + referenceTypeIndex|string -%}
+                    {%- endif -%}
+                    {%- set startString = ('<a href="' + urlString + '">')|safe -%}
+                    {%- set endString = '</a>'|safe -%}
+                {%- else -%}
+                    {%- set startString = "" -%}
+                    {%- set endString = "" -%}
+                {%- endif -%}
+                {{ startString }}{{ entry["referenceType"] }}{{ endString }}
+                </td>
+                <td>
+                {%- if -1 != referenceTypeIndex -%}
+                    {%- if "object" == entry["type"] -%}
+                    <a href="{{ url_for('main.viewFields', index=referenceTypeIndex) }}">View Fields</a>
+                    {%- endif -%}
+                {%- endif -%}
+                </td>
+                <td class="centeredText confirmDelete"><a href="{{ url_for('main.removeField', objectIndex=realIndex, index=loop.index0, displayIndex=calledIndex) }}">X</a></td>
+            </tr>
+            {%- endfor -%}
+        </tbody>
+    </table>
+    <div class="buttonRow">
+        <a href="#" class="ui-button ui-widget ui-corner-all addField{{ id }}Button">Add Field</a>
+    </div>
+{%- endmacro %}
+
+{%- set ns = namespace(idCount = 0, fields=dict(), inputs=dict()) -%}
+
+{% block content %}
+    {%- if "Structures" in session and "Objects" in session["Structures"] and objectIndex < session["Structures"]["Objects"]|length -%}
+        {%- set tempObject = session["Structures"]["Objects"][objectIndex] -%}
+        {%- set tempFields = tempObject["fields"] -%}
+        {%- set tempInputs = tempObject["dependsOn"] if 'dependsOn' in tempObject else [] -%}
+<h2>Fields for Object '<a href="{{ url_for('main.objects') }}#object{{ objectIndex }}">{{ tempObject["name"] }}</a>'</h2>
+<div class="ui-widget-content">
+        {%- if 1 == tempFields|length and "switch" == tempFields[0]["type"] -%}
+            {%- set referenceTypeIndex = findStructureItemIndex(tempFields[0]["type"], tempFields[0]["referenceType"]) -%}
+            {%- if -1 != referenceTypeIndex -%}
+                {%- set switchReference = session["Structures"]["Switches"][referenceTypeIndex] -%}
+                {%- set switchOptions = switchReference["options"] -%}
+                {%- set ns.idCount = switchOptions|length -%}
+                {%- for option in switchOptions -%}
+                    {%- if "object" == option["action"]["type"] -%}
+                        {%- set tempObjectIndex = findStructureItemIndex(option["action"]["type"], option["action"]["referenceType"]) -%}
+                        {%- if -1 == tempObjectIndex -%}
+    <p>Unknown Object ({{ option["name"] }})</p>
+                        {%- else -%}
+                            {%- set tempSubObject = session["Structures"]["Objects"][tempObjectIndex] -%}
+    <h3>Fields for Object '<a href="{{ url_for('main.objects') }}#object{{ tempObjectIndex }}">{{ tempSubObject["name"] }}</a>'</h3>
+                            {%- set _ = ns.fields.update({loop.index0|string : tempSubObject["fields"]}) -%}
+                            {%- set _ = ns.inputs.update({loop.index0|string : tempSubObject["dependsOn"] if 'dependsOn' in tempSubObject else []}) -%}
+                            {{- listFields(tempSubObject["fields"], tempObjectIndex, loop.index0, objectIndex) -}}
+                        {%- endif -%}
+                    {%- else -%}
+    <p>Unhandled Option Type ({{ option["action"]["type"] }})</p>
+                    {%- endif -%}
+                    {%- if not loop.last -%}
+    <hr />
+                    {%- endif -%}
+                {%- endfor -%}
+            {%- endif -%}
+        {%- else -%}
+            {%- set _ = ns.fields.update({"" : tempFields}) -%}
+            {%- set _ = ns.inputs.update({"" : tempInputs}) -%}
+            {{- listFields(tempFields, objectIndex, "", objectIndex) -}}
+        {%- endif -%}
+</div>
+
+<!-- Dialogs -->
+        {%- if 1 == tempFields|length and "switch" == tempFields[0]["type"] -%}
+            {%- if -1 != referenceTypeIndex -%}
+                {%- for option in switchOptions -%}
+                    {%- if "object" == option["action"]["type"] -%}
+                        {%- set tempObjectIndex = findStructureItemIndex(option["action"]["type"], option["action"]["referenceType"]) -%}
+                        {%- if -1 != tempObjectIndex -%}
+                            {%- set tempSubObject = session["Structures"]["Objects"][tempObjectIndex] -%}
+                            {{- addAddFieldForm(tempSubObject["dependsOn"], tempSubObject["fields"], tempObjectIndex, loop.index0, objectIndex) -}}
+                        {%- endif -%}
+                    {%- endif -%}
+                {%- endfor -%}
+            {%- endif -%}
+        {%- else -%}
+            {{- addAddFieldForm(tempInputs, tempFields, objectIndex, "", objectIndex) -}}
+        {%- endif -%}
+    {% else %}
+    <h3>Unknown Object Index</h3>
+    {% endif %}
+{% endblock content %}
+
+{% block additionalJavascript %}
+<script>
+
+const fieldInfo = {{ ns.fields|tojson }};
+const inputInfo = {{ ns.inputs|tojson }};
+const enumInfo = {{ getTypeStructuresDictionary("enum")|tojson }};
+const bitfieldInfo = {{ getTypeStructuresDictionary("bits")|tojson }};
+const objectInfo = {{ getTypeStructuresDictionary("object")|tojson }};
+const switchInfo = {{ getTypeStructuresDictionary("switch")|tojson }};
+
+const objectNames = {{ getNames("Objects")|safe }};
+const enumNames = {{ getNames("Enums")|safe }};
+const switchNames = {{ getNames("Switches")|safe }};
+const bitfieldNames = {{ getNames("Bitfields")|safe }};
+
+function updateConditional(id="") {
+    baseID = "#addField" + id + "Dialog";
+    checkBoxID = baseID + " #isConditional";
+    conditionalID = baseID + " #conditionalSet";
+ 
+    if ($(checkBoxID).is(":checked"))
+    {
+        $(conditionalID).prop("disabled", false);
+        $(conditionalID).show();
+    }
+    else
+    {
+        $(conditionalID).prop("disabled", true);
+        $(conditionalID).hide();
+    }
+}
+
+function resolveVariableType(id, variable) {
+    found = false;
+    variablePath = [];
+    variableType = "";
+    referenceType = "";
+    
+    if(null != variable)
+    {
+        variablePath = variable.split(".");
+    
+        // See if self is the first one
+        checkLocation = fieldInfo;
+        checkIndex = 1;
+        if("self" != variablePath[0])
+        {
+            // Variable coming from an input instead of a field
+            checkLocation = inputInfo;
+            checkIndex = 0;
+        }
+        
+        // Find the variable type
+        for(let i = 0; i < checkLocation[id].length; ++i)
+        {
+            if(variablePath[checkIndex] == checkLocation[id][i]["name"])
+            {
+                found = true;
+                variableType = checkLocation[id][i]["type"];
+                if("referenceType" in checkLocation[id][i])
+                {
+                    referenceType = checkLocation[id][i]["referenceType"];
+                    if("bits" == variableType &&
+                       checkLocation[id][i]["referenceType"] in bitfieldInfo &&
+                       (checkIndex + 1) < variablePath.length)
+                    {
+                        fieldName = variablePath[checkIndex + 1];
+                        fields = bitfieldInfo[checkLocation[id][i]["referenceType"]]["fields"];
+                        for(let j = 0; j < fields.length; ++j)
+                        {
+                            if(fieldName == fields[j]["name"])
+                            {
+                                variableType = fields[j]["type"];
+                                break;
+                            }
+                        }
+                    }
+                }
+                break;
+            }
+        }
+    }
+    
+    return {found, variablePath, variableType, referenceType}
+}
+
+function updateConditionalValues(id="") {
+    if(!(id in fieldInfo))
+    {
+        return;
+    }
+    baseID = "#addField" + id + "Dialog";
+    conditionalIndicatorID = baseID + " #conditionalIndicator";
+    
+    conditionalValueID = baseID + " #conditionalValue";
+    conditionalTextValueID = baseID + " #conditionalTextValue";
+    conditionalNumberValueID = baseID + " #conditionalNumberValue";
+    useConditionalTextID = baseID + " #useConditionalTextValue";
+    useConditionalNumberID = baseID + " #useConditionalNumberValue";
+    
+    let {found, variablePath, variableType, referenceType} = resolveVariableType(id, $(conditionalIndicatorID).val());
+    
+    // Do stuff based on variable type
+    if(!found)
+    {
+        $(conditionalValueID).prop("disabled", false);
+        $(conditionalValueID).show();
+        $(conditionalTextValueID).prop("disabled", true);
+        $(conditionalTextValueID).hide();
+        $(conditionalNumberValueID).prop("disabled", true);
+        $(conditionalNumberValueID).hide();
+        $(useConditionalTextID).val("False");
+        $(useConditionalNumberID).val("False");
+        return;
+    }
+    else if("bool" == variableType || "enum" == variableType)
+    {
+        // Use selection
+        $(conditionalValueID).prop("disabled", false);
+        $(conditionalValueID).show();
+        $(conditionalTextValueID).prop("disabled", true);
+        $(conditionalTextValueID).hide();
+        $(conditionalNumberValueID).prop("disabled", true);
+        $(conditionalNumberValueID).hide();
+        $(useConditionalTextID).val("False");
+        $(useConditionalNumberID).val("False");
+        
+        if("bool" == variableType)
+        {
+            $(conditionalValueID).html("<option value='True'>True</option><option value='False'>False</option>");
+        }
+        else if(referenceType in enumInfo)// "enum"
+        {
+            values = enumInfo[referenceType]["fields"];
+            tempHTML = "";
+            for(let i = 0; i < values.length; ++i)
+            {
+                tempHTML += "<option value='" + values[i]["name"] + "'>" + values[i]["name"] + "</option>";
+            }
+            $(conditionalValueID).html(tempHTML);
+        }
+    }
+    else if ("uint" == variableType || "int" == variableType)
+    {
+        // Use number input
+        $(conditionalValueID).prop("disabled", true);
+        $(conditionalValueID).hide();
+        $(conditionalTextValueID).prop("disabled", true);
+        $(conditionalTextValueID).hide();
+        $(conditionalNumberValueID).prop("disabled", false);
+        $(conditionalNumberValueID).show();
+        $(useConditionalTextID).val("False");
+        $(useConditionalNumberID).val("True");
+    }
+    else
+    {
+        // Use general input type
+        $(conditionalValueID).prop("disabled", true);
+        $(conditionalValueID).hide();
+        $(conditionalTextValueID).prop("disabled", false);
+        $(conditionalTextValueID).show();
+        $(conditionalNumberValueID).prop("disabled", true);
+        $(conditionalNumberValueID).hide();
+        $(useConditionalTextID).val("True");
+        $(useConditionalNumberID).val("False");
+    }
+}
+
+function updateFieldType(id="") {
+    baseID = "#addField" + id + "Dialog";
+    fieldTypeID = baseID + " #fieldType";
+    
+    referenceID = baseID + " #referenceType";
+    sizeID = baseID + " #fieldSize";
+    
+    elementTypeID = baseID + " #elementType";
+    conditionTypeID = baseID + " #untilConditionType";
+    conditionIndicatorID = baseID + " #untilConditionIndicator";
+    
+    fieldType = $(fieldTypeID).val();
+    
+    if("bits" == fieldType || "switch" == fieldType || "list" == fieldType ||
+       "object" == fieldType || "enum" == fieldType)
+    {
+        $(referenceID).prop("disabled", false);
+        $(referenceID).show();
+        $(referenceID).labels().show();
+        $(sizeID).prop("disabled", true);
+        $(sizeID).hide();
+        $(sizeID).labels().hide();
+        
+        if("list" == fieldType)
+        {
+            $(elementTypeID).prop("disabled", false);
+            $(elementTypeID).show();
+            $(elementTypeID).labels().show();
+            $(conditionTypeID).prop("disabled", false);
+            $(conditionTypeID).show();
+            $(conditionTypeID).labels().show();
+            updateElementType(id)
+            updateConditionType(id)
+        }
+        else
+        {
+            $(elementTypeID).prop("disabled", true);
+            $(elementTypeID).hide();
+            $(elementTypeID).labels().hide();
+            $(conditionTypeID).prop("disabled", true);
+            $(conditionTypeID).hide();
+            $(conditionTypeID).labels().hide();
+            $(conditionIndicatorID).prop("disabled", true);
+            $(conditionIndicatorID).hide();
+            $(conditionIndicatorID).labels().hide();
+            
+            $(referenceID).html(generateStructureOptions(fieldType))
+        }
+    }
+    else // built in or custom type
+    {
+        $(referenceID).prop("disabled", true);
+        $(referenceID).hide();
+        $(referenceID).labels().hide();
+        $(sizeID).prop("disabled", false);
+        $(sizeID).show();
+        $(sizeID).labels().show();
+        $(elementTypeID).prop("disabled", true);
+        $(elementTypeID).hide();
+        $(elementTypeID).labels().hide();
+        $(conditionTypeID).prop("disabled", true);
+        $(conditionTypeID).hide();
+        $(conditionTypeID).labels().hide();
+        $(conditionIndicatorID).prop("disabled", true);
+        $(conditionIndicatorID).hide();
+        $(conditionIndicatorID).labels().hide();
+    }
+    updateReferenceType(id);
+}
+
+function generateStructureOptions(structureType) {
+    returnValue = "";
+    referenceArray = [];
+    if("object" == structureType)
+    {
+        referenceArray = objectNames;
+    }
+    else if("enum" == structureType)
+    {
+        referenceArray = enumNames;
+    }
+    else if ("switch" == structureType)
+    {
+        referenceArray = switchNames;
+    }
+    else if ("bits" == structureType)
+    {
+        referenceArray = bitfieldNames;
+    }
+    
+    for(let i = 0; i < referenceArray.length; ++i)
+    {
+        returnValue += "<option value='" + referenceArray[i] + "'>" + referenceArray[i] + "</option>";
+    }
+    return returnValue;
+}
+
+function updateElementType(id="") {
+    baseID = "#addField" + id + "Dialog";
+    
+    referenceID = baseID + " #referenceType";
+    sizeID = baseID + " #fieldSize";
+    
+    elementTypeID = baseID + " #elementType";
+    
+    fieldType = $(elementTypeID).val();
+    
+    if("bits" == fieldType || "switch" == fieldType ||
+       "object" == fieldType || "enum" == fieldType)
+    {
+        $(referenceID).prop("disabled", false);
+        $(referenceID).show();
+        $(referenceID).labels().show();
+        $(sizeID).prop("disabled", true);
+        $(sizeID).hide();
+        $(sizeID).labels().hide();
+        
+        $(referenceID).html(generateStructureOptions(fieldType))
+    }
+    else // built in or custom type
+    {
+        $(referenceID).prop("disabled", true);
+        $(referenceID).hide();
+        $(referenceID).labels().hide();
+        $(sizeID).prop("disabled", false);
+        $(sizeID).show();
+        $(sizeID).labels().show();
+    }
+}
+
+function updateConditionType(id="") {
+    baseID = "#addField" + id + "Dialog";
+
+    conditionTypeID = baseID + " #untilConditionType";
+    conditionIndicatorID = baseID + " #untilConditionIndicator";
+    
+    conditionType = $(conditionTypeID).val();
+    
+    if("COUNT" == conditionType)
+    {
+        $(conditionIndicatorID).prop("disabled", false);
+        $(conditionIndicatorID).show();
+        $(conditionIndicatorID).labels().show();
+    }
+    else // ENDOFDATA
+    {
+        $(conditionIndicatorID).prop("disabled", true);
+        $(conditionIndicatorID).hide();
+        $(conditionIndicatorID).labels().hide();
+    }
+}
+
+function isValidOption(desiredType, desiredReferenceType, desiredSize, checkValue, isBitfieldField=false) {
+    isValid = false;
+    if(checkValue["type"] == desiredType)
+    {
+        if(null != desiredReferenceType && "referenceType" in checkValue &&
+           checkValue["referenceType"] == desiredReferenceType)
+        {
+            isValid = true;
+        }
+        else if(null != desiredSize && (isBitfieldField ||
+                                        ("size" in checkValue &&
+                                         checkValue["size"] == desiredSize)))
+        {
+            isValid = true;
+        }
+    }
+    return isValid;
+}
+
+function getValidOptions(desiredType, desiredReferenceType, desiredSize, inputInfo, fieldInfo) {
+    returnValue = [];
+    for(let i = 0; i < inputInfo.length; ++i)
+    {
+        if(isValidOption(desiredType, desiredReferenceType, desiredSize, inputInfo[i]))
+        {
+            returnValue.push([inputInfo[i]["name"], inputInfo[i]["name"]]);
+        }
+    }
+    for(let i = 0; i < fieldInfo.length; ++i)
+    {
+        if(isValidOption(desiredType, desiredReferenceType, desiredSize, fieldInfo[i]))
+        {
+            returnValue.push(["self." + fieldInfo[i]["name"], fieldInfo[i]["name"]]);
+        }
+        
+        if("object" == fieldInfo[i].type && fieldInfo[i]["referenceType"] in objectInfo)
+        {
+            // Iterate over the fields
+            for(let j = 0; j < objectInfo[fieldInfo[i]["referenceType"]]["fields"].length; ++j)
+            {
+                currentField = objectInfo[fieldInfo[i].referenceType].fields[j];
+                if(isValidOption(desiredType, desiredReferenceType, desiredSize, currentField))
+                {
+                    fieldName = fieldInfo[i]["name"] + "." + currentField["name"];
+                    returnValue.push(["self." + fieldName, fieldName]);                                      
+                }
+            }
+        }
+        else if("bits" == fieldInfo[i].type && fieldInfo[i]["referenceType"] in bitfieldInfo)
+        {
+            // Iterate over the fields
+            for(let j = 0; j < bitfieldInfo[fieldInfo[i]["referenceType"]]["fields"].length; ++j)
+            {
+                currentField = bitfieldInfo[fieldInfo[i].referenceType].fields[j];
+                if(isValidOption(desiredType, desiredReferenceType, desiredSize, currentField, true))
+                {
+                    fieldName = fieldInfo[i]["name"] + "." + currentField["name"];
+                    returnValue.push(["self." + fieldName, fieldName]);                                      
+                }
+            }
+        }
+    }
+    return returnValue;
+}
+
+function updateReferenceType(id="") {
+    baseID = "#addField" + id + "Dialog";
+    
+    referenceID = baseID + " #referenceType";
+    fieldTypeID = baseID + " #fieldType";
+    elementTypeID = baseID + " #elementType";
+    
+    inputsContainerID = baseID + " #inputs";
+    
+    referenceType = $(referenceID).val();
+    workingFieldType = $(fieldTypeID).val();
+    if("list" == workingFieldType)
+    {
+        workingFieldType = $(elementTypeID).val();
+    }
+    
+    currentHTML = "";
+    
+    dependencies = []
+    
+    if("switch" == workingFieldType && referenceType in switchInfo)
+    {
+        // input then additionalInputs
+        mainName = switchInfo[referenceType]["dependsOn"]["name"];
+        mainType = switchInfo[referenceType]["dependsOn"]["type"];
+        mainSize = switchInfo[referenceType]["dependsOn"]["size"];
+        mainReferenceType = switchInfo[referenceType]["dependsOn"]["referenceType"];
+        mainValidOptions = getValidOptions(mainType, mainReferenceType, mainSize, inputInfo[id], fieldInfo[id]);
+        dependencies.push([mainName, mainType, mainReferenceType, mainSize, mainValidOptions])
+        
+        if("additionalDependsOn" in switchInfo[referenceType])
+        {
+            for(let i = 0; i < switchInfo[referenceType]["additionalDependsOn"].length; ++i)
+            {
+                name = switchInfo[referenceType]["additionalDependsOn"][i]["name"];
+                type = switchInfo[referenceType]["additionalDependsOn"][i]["type"];
+                size = switchInfo[referenceType]["additionalDependsOn"][i]["size"];
+                tempReferenceType = switchInfo[referenceType]["additionalDependsOn"][i]["referenceType"];
+                validOptions = getValidOptions(type, tempReferenceType, size, inputInfo[id], fieldInfo[id]);
+                
+                dependencies.push([name, type, tempReferenceType, size, validOptions]);
+            }
+        }
+    }
+    else if("object" == workingFieldType && referenceType in objectInfo)
+    {
+        // inputs
+        if("dependsOn" in objectInfo[referenceType])
+        {
+            for(let i = 0; i < objectInfo[referenceType]["dependsOn"].length; ++i)
+            {
+                name = objectInfo[referenceType]["dependsOn"][i]["name"];
+                type = objectInfo[referenceType]["dependsOn"][i]["type"];
+                size = objectInfo[referenceType]["dependsOn"][i]["size"];
+                tempReferenceType = objectInfo[referenceType]["dependsOn"][i]["referenceType"];
+                validOptions = getValidOptions(type, tempReferenceType, size, inputInfo[id], fieldInfo[id]);
+                
+                dependencies.push([name, type, tempReferenceType, size, validOptions]);
+            }
+        }
+    }
+    
+    for(let i = 0; i < dependencies.length; ++i)
+    {
+        tempInputID = "inputs-" + i;
+        typeString = dependencies[i][1];
+        if(undefined != dependencies[i][2])
+        {
+            typeString += "." + dependencies[i][2];
+        }
+        else if(undefined != dependencies[i][3])
+        {
+            typeString += dependencies[i][3];
+        }
+        currentHTML += "Required Input: " + dependencies[i][0] + " (of type " + typeString + ")" + "<br />";
+        currentHTML += "<select id=\"" + tempInputID + "\" name=\"" + tempInputID + "\">";
+        for(let j = 0; j < dependencies[i][4].length; ++j)
+        {
+            currentHTML += "<option value='" + dependencies[i][4][j][0] + "'>" + dependencies[i][4][j][1] + "</option>";
+        }
+        currentHTML += "</select><br />";
+    }
+    
+    $(inputsContainerID).html(currentHTML);
+}
+
+$(function() {
+    {%- set ns2 = namespace(fieldString = "") -%}
+	{%- if 0 == ns.idCount -%}
+	    {%- set ns2.fieldString = "\"addField\""|safe -%}
+    updateConditional();
+    updateConditionalValues();
+    updateFieldType();
+	{%- else -%}
+	    {%- for tempID in range(ns.idCount) -%}
+    updateConditional({{ tempID }});
+    updateConditionalValues({{ tempID }});
+    updateFieldType({{ tempID }});
+	        {%- if 0 != tempID -%}
+	            {%- set ns2.fieldString = ns2.fieldString + ", " -%}
+	        {%- endif -%}
+	        {%- set ns2.fieldString = ns2.fieldString + "\"addField"|safe + tempID|string + "\""|safe -%}
+	    {%- endfor -%}
+	{%- endif -%}
+	const buttonsAndDialogs = [{{ ns2.fieldString }}];
+
+	for(let i = 0; i < buttonsAndDialogs.length; ++i)
+	{
+	    let value = buttonsAndDialogs[i];
+        $('#' + value + 'Dialog').dialog(dialogInitializationValue);
+        $('.' + value + 'Button').click(function(event) {
+            loadForm(event, value + 'Dialog');
+        });
+	}
+	
+	$(".confirmDelete").click(function(){
+        return confirm("Are you sure you want to delete?");
+    })
+});
+</script>
+{% endblock additionalJavascript %}

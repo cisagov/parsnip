@@ -1,0 +1,591 @@
+{# Copyright 2024, Battelle Energy Alliance, LLC, ALL RIGHTS RESERVED #}
+
+{% set years = "2024" %}
+
+{% import 'macros.j2' as macros -%}
+
+{% extends "layout.base" %}
+
+{% block additionalHeader %}
+{% endblock additionalHeader %}
+
+{% block content %}
+<h2>Parser Choices</h2>
+<div class="ui-widget-content">
+    <div class="buttonRow">
+        <a href="#" class="ui-button ui-widget ui-corner-all addSwitchButton">Add Choice</a>
+    </div>
+    <table id="objecsTable" class="infoTable">
+        <thead>
+            <tr>
+                <th scope="col">Name</th>
+                <th scope="col">Main Dependency</th>
+                <th scope="col">Additional Dependencies</th>
+                <th scope="col">Options</th>
+                <th scope="col">Delete?</th>
+            </tr>
+        </thead>
+        <tbody>
+        {%- if "Structures" in session and "Switches" in session["Structures"] -%}
+            {% for entry in session["Structures"]["Switches"] %}
+                {%- set startString = "" -%}
+                {%- set endString = "" -%}
+                {%- if entry["dependsOn"]["referenceType"] -%}
+                    {%- set referenceTypeIndex = findStructureItemIndex(entry["dependsOn"]["type"], entry["dependsOn"]["referenceType"]) -%}
+                    {%- if -1 != referenceTypeIndex -%}
+                        {%- set urlString = "#" -%}
+                        {%- if "object" == entry["dependsOn"]["type"] -%}
+                            {%- set urlString = url_for('main.objects') + "#object" + referenceTypeIndex|string -%}
+                        {%- elif "enum" == entry["dependsOn"]["type"] -%}
+                            {%- set urlString = url_for('main.enums') + "#enum" + referenceTypeIndex|string -%}
+                        {%- elif "bits" == entry["dependsOn"]["type"] -%}
+                            {%- set urlString = url_for('main.bitfields') + "#bitfield" + referenceTypeIndex|string -%}
+                        {%- elif "switch" == entry["dependsOn"]["type"] -%}
+                            {%- set urlString = "#" -%}
+                        {%- endif -%}
+                        {%- set startString = ('<a href="' + urlString + '">')|safe -%}
+                        {%- set endString = '</a>'|safe -%}
+                    {%- else -%}
+                    {%- endif -%}
+                {%- else -%}
+                    {%- set endString = entry["dependsOn"]["type"] -%}
+                    {%- if entry["dependsOn"]["size"] -%}
+                        {%- set endString = endString + " " + entry["dependsOn"]["size"]|string -%}
+                    {%- endif -%}
+                    {%- set endString = ("<br />(" + endString + ")")|safe -%}
+                {%- endif -%}
+            <tr>
+                <td id="switch{{ loop.index0 }}">{{ entry["name"] }}</td>
+                <td>{{ startString }}{{ entry["dependsOn"]["name"] }}{{ endString }}</td>
+                <td>
+                    <ol>
+                {%- for dependency in entry["additionalDependsOn"] -%}
+                    {%- set startString = "" -%}
+                        {%- set endString = "" -%}
+                        {%- if dependency["referenceType"] -%}
+                            {%- set referenceTypeIndex = findStructureItemIndex(dependency["type"], dependency["referenceType"]) -%}
+                            {%- if -1 != referenceTypeIndex -%}
+                                {%- set urlString = "#" -%}
+                                {%- if "object" == dependency["type"] -%}
+                                    {%- set urlString = url_for('main.objects') + "#object" + referenceTypeIndex|string -%}
+                                {%- elif "enum" == dependency["type"] -%}
+                                    {%- set urlString = url_for('main.enums') + "#enum" + referenceTypeIndex|string -%}
+                                {%- elif "bits" == dependency["type"] -%}
+                                    {%- set urlString = url_for('main.bitfields') + "#bitfield" + referenceTypeIndex|string -%}
+                                {%- elif "switch" == dependency["type"] -%}
+                                    {%- set urlString = "#" -%}
+                                {%- endif -%}
+                                {%- set startString = ('<a href="' + urlString + '">')|safe -%}
+                                {%- set endString = '</a>'|safe -%}
+                            {%- else -%}
+                            {%- endif -%}
+                        {%- else -%}
+                            {%- set endString = dependency["type"] -%}
+                            {%- if dependency["size"] -%}
+                                {%- set endString = endString + " " + dependency["size"]|string -%}
+                            {%- endif -%}
+                            {%- set endString = ("<br />(" + endString + ")")|safe -%}
+                        {%- endif -%}
+                        <li>{{ startString }}{{ dependency["name"] }}{{ endString }}</li>
+                {%- endfor -%}
+                    </ol>
+                </td>
+                <td>
+                    <ol>
+                {%- for option in entry["options"] -%}
+                    {%- set startString = "" -%}
+                    {%- set endString = "" -%}
+                    {%- if option["action"]["referenceType"] -%}
+                        {%- set referenceTypeIndex = findStructureItemIndex(option["action"]["type"], option["action"]["referenceType"]) -%}
+                        {%- if -1 != referenceTypeIndex -%}
+                            {%- set urlString = "#" -%}
+                            {%- if "object" == option["action"]["type"] -%}
+                                {%- set urlString = url_for('main.objects') + "#object" + referenceTypeIndex|string -%}
+                            {%- elif "enum" == option["action"]["type"] -%}
+                                {%- set urlString = url_for('main.enums') + "#enum" + referenceTypeIndex|string -%}
+                            {%- elif "bits" == option["action"]["type"] -%}
+                                {%- set urlString = url_for('main.bitfields') + "#bitfield" + referenceTypeIndex|string -%}
+                            {%- elif "switch" == option["action"]["type"] -%}
+                                {%- set urlString = "#" -%}
+                            {%- endif -%}
+                            {%- set startString = ('<a href="' + urlString + '">')|safe -%}
+                            {%- set endString = '</a>'|safe -%}
+                        {%- else -%}
+                        {%- endif -%}
+                    {%- else -%}
+                        {%- set endString = option["action"]["type"] -%}
+                        {%- if option["action"]["size"] -%}
+                            {%- set endString = endString + " " + option["action"]["size"]|string -%}
+                        {%- endif -%}
+                        {%- set endString = ("<br />(" + endString + ")")|safe -%}
+                    {%- endif -%}
+                    {%- set nsLocal = namespace(inputString = "") -%}
+                    {%- if option["action"]["inputs"] -%}
+                        {%- set nsLocal.inputString = "(" -%}
+                        {%- for inputItem in option["action"]["inputs"] -%}
+                            {%- set nsLocal.inputString = nsLocal.inputString + inputItem["source"] -%}
+                            {%- if not loop.last -%}
+                                {%- set nsLocal.inputString = nsLocal.inputString + ", " -%}
+                            {%- endif -%}
+                        {%- endfor -%}
+                        {%- set nsLocal.inputString = nsLocal.inputString + ")" -%}
+                    {%- endif -%}
+                    <li>{{ option["value"] }} -> {{ startString }}{{ option["action"]["name"] }}{{ endString }}{{ nsLocal.inputString }}</li>
+                {%- endfor -%}
+                    </ol>
+                </td>
+                <td class="centeredText confirmDelete"><a href="{{ url_for('main.removeSwitch', index=loop.index0) }}">X</a></td>
+            </tr>
+            {%- endfor -%}
+        {%- endif -%}
+        </tbody>
+    </table>
+    <div class="buttonRow">
+        <a href="#" class="ui-button ui-widget ui-corner-all addSwitchButton">Add Choice</a>
+    </div>
+  </div>
+</div>
+
+<!-- Dialogs -->
+<div id="addSwitchDialog" class="dialog" title="Add Choice">
+    <form method="POST" action="{{ url_for('main.addSwitch') }}">
+        {{ addSwitchForm.csrf_token }}
+        
+        <!-- Name -->
+        <p class="fieldSet">
+            {{ addSwitchForm.switchName.label }}
+            {{ addSwitchForm.switchName }}
+        </p>
+        {% if addSwitchForm.switchName.error %}
+        <div class="ui-widget">
+	        <div class="ui-state-error ui-corner-all">
+		        <p class="errorLabel"><span class="ui-icon ui-icon-alert"></span>Error:</p>
+		        <ul class="errors">
+                {% for error in addSwitchForm.switchName.error %}
+                    <li>{{ error }}</li>
+                {% endfor %}
+                </ul>
+	        </div>
+        </div>
+        {% endif %}
+        <!-- End Name -->
+        
+        <!-- Main Dependency Name -->
+        <p class="fieldSet">
+            {{ addSwitchForm.switchMainDependency.dependencyName.label }}
+            {{ addSwitchForm.switchMainDependency.dependencyName }}
+        </p>
+        {% if addSwitchForm.switchMainDependency.dependencyName.error %}
+        <div class="ui-widget">
+	        <div class="ui-state-error ui-corner-all">
+		        <p class="errorLabel"><span class="ui-icon ui-icon-alert"></span>Error:</p>
+		        <ul class="errors">
+                {% for error in addSwitchForm.switchMainDependency.dependencyName.error %}
+                    <li>{{ error }}</li>
+                {% endfor %}
+                </ul>
+	        </div>
+        </div>
+        {% endif %}
+        <!-- End Main Dependency Name -->
+        
+        <!-- Main Dependency Type -->
+        <p class="fieldSet">
+            {{ addSwitchForm.switchMainDependency.dependencyType.label }}
+            {{ addSwitchForm.switchMainDependency.dependencyType(onchange="updateMainDependencyType()") }}
+        </p>
+        <!-- End Main Dependency Type -->
+        
+        <!-- Main Dependency Field Size -->
+        <p class="fieldSet">
+            {{ addSwitchForm.switchMainDependency.fieldSize.label }}
+            {{ addSwitchForm.switchMainDependency.fieldSize }}
+        </p>
+        {% if addSwitchForm.switchMainDependency.fieldSize.error %}
+        <div class="ui-widget">
+	        <div class="ui-state-error ui-corner-all">
+		        <p class="errorLabel"><span class="ui-icon ui-icon-alert"></span>Error:</p>
+		        <ul class="errors">
+                {% for error in addSwitchForm.switchMainDependency.fieldSize.error %}
+                    <li>{{ error }}</li>
+                {% endfor %}
+                </ul>
+	        </div>
+        </div>
+        {% endif %}
+        <!-- End Main Dependency Field Size -->
+        
+        <!-- Main Dependency Reference Type -->
+        <p class="fieldSet">
+            {{ addSwitchForm.switchMainDependency.referenceType.label }}
+            {{ addSwitchForm.switchMainDependency.referenceType(onchange="updateOptions()") }}
+        </p>
+        <!-- End Main Dependency Reference Type -->
+        
+        <hr />
+        <p id="additionalDependencyLimits">Between {{ addSwitchForm.switchAdditionalDependencies.min_entries }} and {{ addSwitchForm.switchAdditionalDependencies.max_entries }} dependencies may be provided.</p>
+        {% set dependenciesText = addSwitchForm.switchAdditionalDependencies|length %}
+        {% if dependenciesText != 1 %}
+            {% set dependenciesText = dependenciesText|string + " dependencies are" %}
+        {% else %}
+            {% set dependenciesText = dependenciesText|string + " dependency is" %}
+        {% endif %}
+        <p id="currentDependencyCount"><span id="DepdendencyCounterSpace">{{dependenciesText}}</span> currently defined.</p>
+        <!-- Start Additional Dependency List -->
+        <div id="additionalDependencies">
+        {%- for additionalDependency in addSwitchForm.switchAdditionalDependencies %}
+            <p class="fieldSet" id="dependencyFieldSet-{{loop.index0}}">
+                <a href="#" id="removeAdditionalDependency-{{loop.index0}}" onclick="removeAdditionalDependency({{ loop.index0 }});">X</a>
+                {{ additionalDependency.dependencyName.label }}
+                {{ additionalDependency.dependencyName }}<br />
+                {{ additionalDependency.dependencyType.label }}
+                {{ additionalDependency.dependencyType(onchange="updateDependencyType(" + loop.index0|string  + ")") }}<br />
+                {{ additionalDependency.fieldSize.label }}
+                {{ additionalDependency.fieldSize }}<br />
+                {{ additionalDependency.referenceType.label }}
+                {{ additionalDependency.referenceType }}
+            </p>
+        {% endfor -%}
+        </div>
+        <!-- End Additional Dependency List -->
+        <a href="#" class="ui-button ui-widget ui-corner-all" onclick="addAdditionalDependency();">Add Dependency</a>
+        <hr />
+        <div id="options">
+        </div>
+        <hr />
+        <input type="submit" value="Add Switch" class="ui-button ui-widget ui-corner-all" />
+    </form>
+</div>
+{% endblock content %}
+
+{% block additionalJavascript %}
+<script>
+function updateOptions() {
+    fieldType = $('#switchMainDependency-dependencyType').val();
+    referenceType = $('#switchMainDependency-referenceType').val();
+    
+    currentHTML = "";
+        
+    let maxIndex = -1;
+    
+    if("enum" == fieldType && referenceType in enumValues)
+    {
+        values = enumValues[referenceType]["fields"]
+        maxIndex = values.length;
+        for(let i = 0; i < values.length; ++i)
+        {
+            valueSelectionID = "switchOptions-" + i + "-optionValueSelection";
+            actionNameID = "switchOptions-" + i + "-optionActionName";
+            actionTypeID = "switchOptions-" + i + "-optionActionType";
+            actionSizeID = "switchOptions-" + i + "-optionActionSize";
+            actionReferenceTypeID = "switchOptions-" + i + "-referenceType";
+            actionInputsID = "switchOptions-" + i + "-inputs";
+            
+            currentHTML += "<p class=\"fieldSet\" id=\"optionFieldSet-" + i + "\">";
+            currentHTML += "<label for=\"" + valueSelectionID + "\">Value: </label>";
+            currentHTML += "<input id=\"" + valueSelectionID + "\" name=\"" + valueSelectionID + "\" required readonly type=\"text\" value=\"" + values[i]["name"] + "\"><br />";
+            currentHTML += "<label for=\"" + actionNameID + "\">Action Name: </label>";
+            currentHTML += "<input id=\"" + actionNameID + "\" name=\"" + actionNameID + "\" required type=\"text\"><br />";
+            currentHTML += "<label for=\"" + actionTypeID + "\">Action Type: </label>";
+            currentHTML += "<select id=\"" + actionTypeID + "\" name=\"" + actionTypeID + "\" onchange=\"updateOptionType(" + i + ")\">";
+            for(let j = 0; j < actionTypes.length; ++j)
+            {
+                currentHTML += "<option value=\"" + actionTypes[j][0] + "\">" + actionTypes[j][1] + "</option>";
+            }
+            currentHTML += "</select><br />";
+            currentHTML += "<label for=\"" + actionSizeID + "\">Field Size (Bits): </label>";
+            currentHTML += "<input id=\"" + actionSizeID + "\" name=\"" + actionNameID + "\" min=\"0\" type=\"number\" value=\"8\"><br />";
+            currentHTML += "<label for=\"" + actionReferenceTypeID + "\">Reference Type: </label>";
+            currentHTML += "<select id=\"" + actionReferenceTypeID + "\" name=\"" + actionReferenceTypeID + "\" onchange=\"updateReferenceType(" + i + ")\">";
+{% for objectReference in objectReferences -%}
+            currentHTML += "<option value=\"{{ objectReference[0] }}\">{{ objectReference[1] }}</option>";
+{%- endfor %}
+            currentHTML += "</select><br />";
+            currentHTML += "<span id=\"" + actionInputsID + "\">";
+            currentHTML += "</span>";
+            currentHTML += "</p>";
+        }
+    }
+    
+    $("#options").html(currentHTML);
+    
+    for(let i = 0; i < maxIndex; ++i)
+    {
+        updateOptionType(i)
+    }
+}
+
+function getValidOptions(inputValue, possibleInputs) {
+    returnValue = [];
+    for(let i = 0; i < possibleInputs.length; ++i)
+    {
+        if(possibleInputs[i][1] == inputValue["type"] &&
+           (possibleInputs[i][2] == inputValue["referenceType"] || possibleInputs[i][3] == inputValue["size"]))
+        {
+            returnValue.push(possibleInputs[i][0]);
+        }
+    }
+    return returnValue;
+}
+
+function updateReferenceType(index) {
+    referenceType = $('#switchOptions-' + index + '-referenceType').val();
+    actionInputsID = "switchOptions-" + index + "-inputs";
+    
+    dependencyInfo = [];
+    
+    mainDependencyName = $('#switchMainDependency-dependencyName').val();
+    mainDependencyType = $('#switchMainDependency-dependencyType').val();
+    mainDependencyReference = $('#switchMainDependency-referenceType').val();
+    dependencyInfo.push([mainDependencyName, mainDependencyType, mainDependencyReference, null]);
+    
+    for(let i = 0; i < nextAdditionalDependenciesIndex; ++i)
+    {
+        // See if the elements exist
+        if(0 != $('#switchAdditionalDependencies-' + i + '-dependencyType').length)
+        {
+            // Elements Exist
+            additionalDependencyName = $('#switchAdditionalDependencies-' + i + '-dependencyName').val();
+            additionalDependencyType = $('#switchAdditionalDependencies-' + i + '-dependencyType').val();
+            additionalDependencyReference = $('#switchAdditionalDependencies-' + i + '-referenceType').val();
+            additionalDependencySize = $('#switchAdditionalDependencies-' + i + '-fieldSize').val();
+            dependencyInfo.push([additionalDependencyName, additionalDependencyType, additionalDependencyReference, additionalDependencySize]);
+        }
+    }
+    
+    currentHTML = "";
+    if(referenceType in objectInputs)
+    {
+        for(let i = 0; i < objectInputs[referenceType].length; ++i)
+        {
+            tempInputID = actionInputsID + "-" + i;
+            tempInput = objectInputs[referenceType][i];
+            validOptions = getValidOptions(tempInput, dependencyInfo);
+            typeValue = tempInput["type"];
+            if(null != tempInput["referenceType"])
+            {
+                typeValue += "." + tempInput["referenceType"];
+            }
+            else
+            {
+                typeValue += tempInput["size"];
+            }
+            currentHTML += "Required Input: " + tempInput["name"] + " (of type " + typeValue + ")" + "<br />";
+            currentHTML += "<select id=\"" + tempInputID + "\" name=\"" + tempInputID + "\">";
+            for(let j = 0; j < validOptions.length; ++j)
+            {
+                currentHTML += "<option value='" + validOptions[j] + "'>" + validOptions[j] + "</option>";
+            }
+            currentHTML += "</select><br />";
+        }
+    }
+    $("#" + actionInputsID).html(currentHTML)
+}
+
+function updateOptionType(index) {
+    optionType = $('#switchOptions-' + index + '-optionActionType').val();
+    
+    actionSizeID = "#switchOptions-" + index + "-optionActionSize";
+    actionReferenceTypeID = "#switchOptions-" + index + "-referenceType";
+    actionInputsID = "#switchOptions-" + index + "-inputs";
+    
+    if ("void" == optionType)
+    {
+        $(actionSizeID).prop("disabled", true);
+        $(actionSizeID).hide();
+        $(actionSizeID).labels().hide();
+        $(actionReferenceTypeID).prop("disabled", true);
+        $(actionReferenceTypeID).hide();
+        $(actionReferenceTypeID).labels().hide();
+        $(actionInputsID).prop("disabled", true);
+        $(actionInputsID).hide();
+    }
+    else if ("object" == optionType)
+    {
+        $(actionSizeID).prop("disabled", true);
+        $(actionSizeID).hide();
+        $(actionSizeID).labels().hide();
+        $(actionReferenceTypeID).prop("disabled", false);
+        $(actionReferenceTypeID).show();
+        $(actionReferenceTypeID).labels().show();
+        $(actionInputsID).prop("disabled", false);
+        $(actionInputsID).show();
+        
+        updateReferenceType(index);
+    }
+    else // Currently not used
+    {
+        $(actionSizeID).prop("disabled", false);
+        $(actionSizeID).show();
+        $(actionSizeID).labels().show();
+        $(actionReferenceTypeID).prop("disabled", true);
+        $(actionReferenceTypeID).hide();
+        $(actionReferenceTypeID).labels().hide();
+        $(actionInputsID).prop("disabled", true);
+        $(actionInputsID).hide();
+    }
+}
+
+function updateDependencyElements(typeID, sizeID, referenceID) {
+    fieldType = $('#' + typeID).val();
+    
+    if("object" == fieldType || "enum" == fieldType)
+    {
+        $('#' + referenceID).prop("disabled", false);
+        $('#' + referenceID).show();
+        $('#' + referenceID).labels().show();
+        $('#' + sizeID).prop("disabled", true);
+        $('#' + sizeID).hide();
+        $('#' + sizeID).labels().hide();
+    }
+    else // built in or custom type
+    {
+        $('#' + referenceID).prop("disabled", true);
+        $('#' + referenceID).hide();
+        $('#' + referenceID).labels().hide();
+        $('#' + sizeID).prop("disabled", false);
+        $('#' + sizeID).show();
+        $('#' + sizeID).labels().show();
+    }
+}
+
+function updateDependencyType(index) {
+    updateDependencyElements('switchAdditionalDependencies-' + index + '-dependencyType',
+                             'switchAdditionalDependencies-' + index + '-fieldSize',
+                             'switchAdditionalDependencies-' + index + '-referenceType');
+}
+
+function updateMainDependencyType() {
+    updateDependencyElements('switchMainDependency-dependencyType',
+                             'switchMainDependency-fieldSize',
+                             'switchMainDependency-referenceType');
+    updateOptions();
+}
+
+function updateAdditionalDependenciesCount() {
+    text = currentAdditionalDependencies;
+    if(1 == text)
+    {
+        text = text + " dependency is";
+    }
+    else
+    {
+        text = text + " dependencies are";
+    }
+    $("#DepdendencyCounterSpace").html(text);
+}
+
+function addAdditionalDependency() {
+    currentHTML = $("#additionalDependencies").html();
+    
+    currentNameValues = $("#additionalDependencies [id$='dependencyName']")
+    currentTypeValues = $("#additionalDependencies [id$='dependencyType']")
+    currentSizeValues = $("#additionalDependencies [id$='fieldSize']")
+    currentReferenceTypeValues = $("#additionalDependencies [id$='referenceType']")
+    
+    dependencyNameID = "switchAdditionalDependencies-" + nextAdditionalDependenciesIndex + "-dependencyName";
+    dependencyTypeID = "switchAdditionalDependencies-" + nextAdditionalDependenciesIndex + "-dependencyType";
+    dependencySizeID = "switchAdditionalDependencies-" + nextAdditionalDependenciesIndex + "-fieldSize";
+    dependencyReferenceTypeID = "switchAdditionalDependencies-" + nextAdditionalDependenciesIndex + "-referenceType";
+    
+    currentHTML += "\n<p class=\"fieldSet\" id=\"dependencyFieldSet-" + nextAdditionalDependenciesIndex + "\">";
+    currentHTML += "<a href=\"#\" id=\"removeAdditionalDependency-" + nextAdditionalDependenciesIndex + "\" onclick=\"removeAdditionalDependency(" + nextAdditionalDependenciesIndex + ");\">X</a>\n";
+    currentHTML += "<label for=\"" + dependencyNameID + "\">Dependency Name: </label>";
+    currentHTML += "<input id=\"" + dependencyNameID + "\" name=\"" + dependencyNameID + "\" required type=\"text\"><br />";
+    currentHTML += "<label for=\"" + dependencyTypeID + "\">Dependency Type: </label>";
+    currentHTML += "<select id=\"" + dependencyTypeID + "\" name=\"" + dependencyTypeID + "\" onchange=\"updateDependencyType(" + nextAdditionalDependenciesIndex + ")\">";
+    {% for item in dependencyTypes -%}
+    currentHTML += "<option value='{{ item[0] }}'>{{ item[1] }}</option>";
+    {% endfor -%}
+    currentHTML += "</select><br />";
+    currentHTML += "<label for=\"" + dependencySizeID + "\">Field Size (Bits): </label>";
+    currentHTML += "<input id=\"" + dependencySizeID + "\" name=\"" + dependencySizeID + "\" type=\"number\" min=\"0\"><br />";
+    currentHTML += "<label for=\""+ dependencyReferenceTypeID + "\">Reference Type: </label>";
+    currentHTML += "<select id=\"" + dependencyReferenceTypeID + "\" name=\"" + dependencyReferenceTypeID + "\">";
+    {% for item in enumReferences -%}
+    currentHTML += "<option value='{{ item[0] }}'>{{ item[1] }}</option>";
+    {% endfor -%}
+    currentHTML += "</select><br />";
+    currentHTML += "</p>\n"
+    $("#additionalDependencies").html(currentHTML);
+    updateDependencyType(nextAdditionalDependenciesIndex);
+    
+    ++currentAdditionalDependencies;
+    ++nextAdditionalDependenciesIndex;
+    updateAdditionalDependenciesCount();
+    
+    currentNameValues.each(function(){
+        currentID = $(this).attr("id");
+        currentValue = $(this).val();
+        $("#additionalDependencies #" + currentID).val(currentValue);
+    });
+    
+    currentTypeValues.each(function(){
+        currentID = $(this).attr("id");
+        currentValue = $(this).val();
+        $("#additionalDependencies #" + currentID).val(currentValue);
+    });
+    
+    currentSizeValues.each(function(){
+        currentID = $(this).attr("id");
+        currentValue = $(this).val();
+        $("#additionalDependencies #" + currentID).val(currentValue);
+    });
+    
+    currentReferenceTypeValues.each(function(){
+        currentID = $(this).attr("id");
+        currentValue = $(this).val();
+        $("#additionalDependencies #" + currentID).val(currentValue);
+    });
+}
+
+function removeAdditionalDependency(fieldNumber) {
+    $("#dependencyFieldSet-" + fieldNumber).remove();
+    --currentAdditionalDependencies;
+    updateAdditionalDependenciesCount();
+}
+
+const maxAdditionalDependencies = {{ addSwitchForm.switchAdditionalDependencies.max_entries }};
+var currentAdditionalDependencies = {{ addSwitchForm.switchAdditionalDependencies | length }};
+var nextAdditionalDependenciesIndex = {{ addSwitchForm.switchAdditionalDependencies | length }};
+
+const enumValues = {{ enumValues|safe }};
+
+const objectInputs = {{ objectInputs|safe }};
+
+{% set ns = namespace(actionTypeArray="[") -%}
+{%- for actionType in actionTypes -%}
+    {%- set ns.actionTypeArray = ns.actionTypeArray + "[\"" + actionType[0] + "\", \"" + actionType[1] + "\"]" -%}
+    {%- if not loop.last -%}
+        {%- set ns.actionTypeArray = ns.actionTypeArray + ", " -%}
+    {%- endif -%}
+{%- endfor -%}
+{%- set ns.actionTypeArray = ns.actionTypeArray + "]" %}
+const actionTypes = {{ ns.actionTypeArray|safe }};
+
+$(function() {
+	
+	const buttonsAndDialogs = ["addSwitch"];
+
+	for(let i = 0; i < buttonsAndDialogs.length; ++i)
+	{
+	    let value = buttonsAndDialogs[i];
+        $('#' + value + 'Dialog').dialog(dialogInitializationValue);
+        $('.' + value + 'Button').click(function(event) {
+            loadForm(event, value + 'Dialog');
+        });
+	}
+	
+	$(".confirmDelete").click(function(){
+        return confirm("Are you sure you want to delete?");
+    })
+    
+    for(let i = 0; i < {{ addSwitchForm.switchAdditionalDependencies|length }}; ++i)
+    {
+        updateDependencyType(i);
+    }
+    
+    updateMainDependencyType();
+});
+</script>
+{% endblock additionalJavascript %}

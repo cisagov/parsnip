@@ -1,0 +1,14 @@
+*.out
+*.bak
+.DS_Store
+.devcontainer
+.vscode
+*.pyc
+__pycache__
+/backend/*output*
+/backend/output_no_dependencies.svg
+/backend/output_with_dependencies.svg
+/backend/unexpected_top_nodes.txt
+/backend/paths*.json
+/backend/cycles.txt
+/frontend/app/flask_session
