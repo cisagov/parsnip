@@ -9,6 +9,34 @@ import switches
 import bitfields
 import zeektypes
 import utils
+import os
+
+def loadFiles(rootFilePath, scopes):
+    objects = {}
+    switches = {}
+    bitfields = {}
+    enums = {}
+
+    for scope in scopes:
+        objectFilePath = os.path.join(rootFilePath, scope, "objects.json")
+        switchesFilePath = os.path.join(rootFilePath, scope, "switches.json")
+        bitfieldsFilePath = os.path.join(rootFilePath, scope, "bitfields.json")
+        enumsFilePath = os.path.join(rootFilePath, scope, "enums.json")
+        
+        if os.path.isfile(objectFilePath):
+            print("Processing {0}".format(objectFilePath))
+            objects[utils.normalizedScope(scope, "object")] = processObjectsFile(objectFilePath)
+        if os.path.isfile(switchesFilePath):
+            print("Processing {0}".format(switchesFilePath))
+            switches[utils.normalizedScope(scope, "switch")] = processSwitchFile(switchesFilePath)
+        if os.path.isfile(bitfieldsFilePath):
+            print("Processing {0}".format(bitfieldsFilePath))
+            bitfields[utils.normalizedScope(scope, "bitfield")] = processBitfieldFile(bitfieldsFilePath)
+        if os.path.isfile(enumsFilePath):
+            print("Processing {0}".format(enumsFilePath))
+            enums[utils.normalizedScope(scope, "enum")] = processEnumFile(enumsFilePath)
+            
+    return (objects, switches, bitfields, enums)
 
 def passThroughLink(switchName, objectField, scopes, allObjects, allSwitches, linkObjectField):
     for scope in scopes: 
