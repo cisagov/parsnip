@@ -1,0 +1,4 @@
+module ${scope};
+
+export {
+${contents}}

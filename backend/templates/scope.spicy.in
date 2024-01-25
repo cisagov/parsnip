@@ -1,0 +1,5 @@
+module ${scope};
+
+import spicy;
+
+${additionalScopes}${entryPoint}${objectsString}# vim: ai si tabstop=4 shiftwidth=4 softtabstop=4 expandtab colorcolumn=101 syntax=spicy

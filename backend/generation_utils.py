@@ -2,9 +2,27 @@ import utils
 import graphing
 import json
 import os
+from string import Template
 
 # Graph Theory Imports
 import networkx as nx
+
+def copyFile(source, destination):
+    with open(source, "r") as inputFile, open(destination, "w") as currentFile:
+        currentFile.write(inputFile.read())
+    
+def copyTemplateFile(source, data, destination):
+    with open(source, "r") as inputFile, open(destination, "w") as currentFile:
+        currentFile.write(Template(inputFile.read()).substitute(data))
+        
+def writeNodes(nodes, outFilePath):
+    with open(outFilePath, "w") as outFile:
+            for node in nodes:
+                outFile.write(node + "\n")
+                
+def writeDataToFile(data, outFilePath):
+    with open(outFilePath, "w") as outFile:
+        outFile.write(data)
 
 def generateProtocolEvents(normalScope, entryPointScope, entryPointName, trasportProtos, ports=[], usesLayer2=False):
     eventString = ""
@@ -289,28 +307,23 @@ def printGraphWarnings(cycles, missingTopLevelNodes, unexpectedTopLevelNodes):
         print()
     
 def saveGraphInformation(graph, pathInformation, cycles, missingExpectedTopLevelNodes, unexpectedTopLevelNodes):
-    with open("paths.json", "w") as outFile:
-        outFile.write(json.dumps(pathInformation, indent=4))
+    writeDataToFile(json.dumps(pathInformation, indent=4), "paths.json")
         
     if len(cycles) > 0:
-     with open("cycles.txt", "w") as outFile:
+        cycleString = ""
         for cycle in cycles:
-            cycleString = ""
             for index, node in enumerate(cycle):
                 cycleString = cycleString + node
                 if index < len(cycle) - 1:
                     cycleString += " -> "
-            outFile.write(cycleString + "\n")
+            cycleString += "\n"
+        writeDataToFile("cycles.txt", cycleString);
     
     if 0 != len(missingExpectedTopLevelNodes):
-        with open("missing_expected_nodes.txt", "w") as outFile:
-            for node in missingExpectedTopLevelNodes:
-                outFile.write(node + "\n")
+        writeNodes(missingExpectedTopLevelNodes, "missing_expected_nodes.txt")
         
     if 0 != len(unexpectedTopLevelNodes):
-        with open("unexpected_top_nodes.txt", "w") as outFile:
-            for node in unexpectedTopLevelNodes:
-                outFile.write(node + "\n")
+        writeNodes(unexpectedTopLevelNodes, "unexpected_top_nodes.txt")
 
     dotGraph = nx.nx_pydot.to_pydot(graph)
     dotGraph.write_svg("output_no_dependencies.svg")
@@ -374,121 +387,18 @@ def determineInterScopeDependencies(configuration, bitfields, objects, switches)
     return crossScopeItems
     
 def writeCMakeFiles(outRootFolder):
-    # Create root CMakeLists.txt file
-    cmakeListsInputString = '''\
-# Warning! This is an automatically generated file!
-#
-cmake_minimum_required(VERSION 3.15 FATAL_ERROR)
-
-project({0} LANGUAGES C)
-
-list(PREPEND CMAKE_MODULE_PATH "${{PROJECT_SOURCE_DIR}}/cmake")
-find_package(SpicyPlugin REQUIRED)
-
-# Set minimum versions that this plugin needs.
-#spicy_required_version("1.2.0")
-#zeek_required_version("6.0.0")
-
-if(NOT CMAKE_BUILD_TYPE)
-    # Default to the release build
-    set(CMAKE_BUILD_TYPE "Release" CACHE STRING "")
-endif(NOT CMAKE_BUILD_TYPE)
-
-add_subdirectory(analyzer)
-'''.format(utils.PROTOCOL_NAME)
-
-    with open(os.path.join(outRootFolder, "CMakeLists.txt"), "w") as currentFile:
-        currentFile.write(cmakeListsInputString)
+    # Create root CMakeLists.txt file    
+    data = {"protocol": utils.PROTOCOL_NAME}
+    copyTemplateFile(os.path.join("templates", "root_CMakeLists.txt.in"),
+                     data,
+                     os.path.join(outRootFolder, "CMakeLists.txt"))
         
     # Create cmake folder contents
     cmakeFolder = os.path.join(outRootFolder, "cmake")
     os.makedirs(cmakeFolder, exist_ok=True)
 
-    findPluginString = '''\
-# Warning! This is an automatically generated file!
-#
-# Find the Spicy plugin to get access to the infrastructure it provides.
-#
-# While most of the actual CMake logic for building analyzers comes with the Spicy
-# plugin for Zeek, this code bootstraps us by asking "spicyz" for the plugin's
-# location. Either make sure that "spicyz" is in PATH, set the environment
-# variable SPICYZ to point to its location, or set variable ZEEK_SPICY_ROOT
-# in either CMake or environment to point to its installation or build
-# directory.
-#
-# This exports:
-#
-#     SPICY_PLUGIN_FOUND            True if plugin and all dependencies were found
-#     SPICYZ                        Path to spicyz
-#     SPICY_PLUGIN_VERSION          Version string of plugin
-#     SPICY_PLUGIN_VERSION_NUMBER   Numerical version number of plugin
-
-# Runs `spicyz` with the flags given as second argument and stores the output in the variable named
-# by the first argument.
-function (run_spicycz output)
-    execute_process(COMMAND "${SPICYZ}" ${ARGN} OUTPUT_VARIABLE output_
-                    OUTPUT_STRIP_TRAILING_WHITESPACE)
-
-    string(STRIP "${output_}" output_)
-    set(${output} "${output_}" PARENT_SCOPE)
-endfunction ()
-
-# Checks that the Spicy plugin version it at least the given version.
-function (spicy_plugin_require_version version)
-    string(REGEX MATCH "([0-9]*)\.([0-9]*)\.([0-9]*).*" _ ${version})
-    math(EXPR version_number "${CMAKE_MATCH_1} * 10000 + ${CMAKE_MATCH_2} * 100 + ${CMAKE_MATCH_3}")
-
-    if ("${SPICY_PLUGIN_VERSION_NUMBER}" LESS "${version_number}")
-        message(FATAL_ERROR "Package requires at least Spicy plugin version ${version}, "
-                            "have ${SPICY_PLUGIN_VERSION}")
-    endif ()
-endfunction ()
-
-###
-### Main
-###
-
-if (NOT SPICYZ)
-    set(SPICYZ "$ENV{SPICYZ}")
-endif ()
-
-if (NOT SPICYZ)
-    # Support an in-tree Spicy build.
-    find_program(
-        spicyz spicyz
-        HINTS ${ZEEK_SPICY_ROOT}/bin ${ZEEK_SPICY_ROOT}/build/bin $ENV{ZEEK_SPICY_ROOT}/bin
-              $ENV{ZEEK_SPICY_ROOT}/build/bin ${PROJECT_SOURCE_DIR}/../../build/bin)
-    set(SPICYZ "${spicyz}")
-endif ()
-
-message(STATUS "spicyz: ${SPICYZ}")
-
-if (SPICYZ)
-    set(SPICYZ "${SPICYZ}" CACHE PATH "" FORCE) # make sure it's in the cache
-
-    run_spicycz(SPICY_PLUGIN_VERSION "--version")
-    run_spicycz(SPICY_PLUGIN_VERSION_NUMBER "--version-number")
-    message(STATUS "Zeek plugin version: ${SPICY_PLUGIN_VERSION}")
-
-    run_spicycz(spicy_plugin_path "--print-plugin-path")
-    set(spicy_plugin_cmake_path "${spicy_plugin_path}/cmake")
-    message(STATUS "Zeek plugin CMake path: ${spicy_plugin_cmake_path}")
-
-    list(PREPEND CMAKE_MODULE_PATH "${spicy_plugin_cmake_path}")
-    find_package(Zeek REQUIRED)
-    find_package(Spicy REQUIRED)
-    zeek_print_summary()
-    spicy_print_summary()
-
-    include(ZeekSpicyAnalyzerSupport)
-endif ()
-
-include(FindPackageHandleStandardArgs)
-find_package_handle_standard_args(SpicyPlugin DEFAULT_MSG SPICYZ ZEEK_FOUND)
-'''
-
-    with open(os.path.join(cmakeFolder, "FindSpicyPlugin.cmake"), "w") as currentFile:
-        currentFile.write(findPluginString)
+    copyFile(os.path.join("templates", "FindSpicyPlugin.cmake.in"),
+             os.path.join(cmakeFolder, "FindSpicyPlugin.cmake"))
         
 def writeTestFiles(outRootFolder):
     # Create test folder contents
@@ -499,129 +409,38 @@ def writeTestFiles(outRootFolder):
     scriptsFolder = os.path.join(testingFolder, "scripts")
     os.makedirs(scriptsFolder, exist_ok=True)
 
-    btestConfigContent = '''\
-[btest]
-TestDirs    = tests
-TmpDir      = %(testbase)s/.tmp
-BaselineDir = %(testbase)s/Baseline
-IgnoreDirs  = .tmp
-IgnoreFiles = *.tmp *.swp #* *.trace .DS_Store
-
-[environment]
-ZEEKPATH=`%(testbase)s/scripts/get-zeek-env zeekpath`
-ZEEK_PLUGIN_PATH=`%(testbase)s/scripts/get-zeek-env zeek_plugin_path`
-ZEEK_SEED_FILE=%(testbase)s/files/random.seed
-PATH=`%(testbase)s/scripts/get-zeek-env path`
-PACKAGE=%(testbase)s/../scripts
-TZ=UTC
-LC_ALL=C
-TRACES=%(testbase)s/Traces
-TMPDIR=%(testbase)s/.tmp
-TEST_DIFF_CANONIFIER=%(testbase)s/scripts/diff-remove-timestamps
-DIST=%(testbase)s/..
-# Set compilation-related variables to well-defined state.
-CC=
-CXX=
-CFLAGS=
-CPPFLAGS=
-CXXFLAGS=
-LDFLAGS=
-DYLDFLAGS=
-'''
-    with open(os.path.join(testingFolder, "btest.cfg"), "w") as currentFile:
-        currentFile.write(btestConfigContent)
-
-    availabilityContent = '''\
-# Warning! This is an automatically generated file!
-#
-# @TEST-DOC: Check that the {0} analyzer is available.
-#
-# @TEST-EXEC: zeek -NN | grep -Eqi 'ANALYZER_{1}'
-'''.format(utils.PROTOCOL_NAME, utils.PROTOCOL_NAME.upper())
-
-    with open(os.path.join(testsFolder, "availability.zeek"), "w") as currentFile:
-        currentFile.write(availabilityContent)
+    copyFile(os.path.join("templates", "btest.cfg.in"),
+             os.path.join(testingFolder, "btest.cfg"))
     
-    removeTimestampsScript = '''\
-    #! /usr/bin/env bash
-#
-# Replace anything which looks like timestamps with XXXs (including the #start/end markers in logs).
-
-# Get us "modern" regexps with sed.
-if [ "$(uname)" == "Linux" ]; then
-    sed="sed -r"
-else
-    sed="sed -E"
-fi
-
-$sed 's/(0\.000000)|([0-9]{9,10}\.[0-9]{2,8})/XXXXXXXXXX.XXXXXX/g' |
-    $sed 's/^ *#(open|close).(19|20)..-..-..-..-..-..$/#\1 XXXX-XX-XX-XX-XX-XX/g'
-'''
-    with open(os.path.join(scriptsFolder, "diff-remove-timestamps"), "w") as currentFile:
-        currentFile.write(removeTimestampsScript)
+    data = {
+        "protocolName": utils.PROTOCOL_NAME,
+        "protocolNameUpper": utils.PROTOCOL_NAME.upper()
+    }
     
-    getZeekEnvScript = '''\
-#! /bin/sh
-#
-# BTest helper for getting values for Zeek-related environment variables.
+    copyTemplateFile(os.path.join("templates", "availability.zeek.in"),
+                     data,
+                     os.path.join(testsFolder, "availability.zeek"))
 
-# shellcheck disable=SC2002
-base="$(dirname "$0")"
-zeek_dist=$(cat "${base}/../../build/CMakeCache.txt" 2>/dev/null | grep ZEEK_DIST | cut -d = -f 2)
+    copyFile(os.path.join("templates", "diff-remove-timestamps.in"),
+             os.path.join(scriptsFolder, "diff-remove-timestamps"))
+    
+    copyFile(os.path.join("templates", "get-zeek-env.in"),
+             os.path.join(scriptsFolder, "get-zeek-env"))
 
-if [ -n "${zeek_dist}" ]; then
-    if [ "$1" = "zeekpath" ]; then
-        "${zeek_dist}/build/zeek-path-dev"
-    elif [ "$1" = "zeek_plugin_path" ]; then
-        (cd "${base}/../.." && pwd)
-    elif [ "$1" = "path" ]; then
-        echo "${zeek_dist}/build/src:${zeek_dist}/aux/btest:${base}/:${zeek_dist}/aux/zeek-cut:$PATH"
-    else
-        echo "usage: $(basename "$0") <var>" >&2
-        exit 1
-    fi
-else
-    # Use Zeek installation for testing. In this case zeek-config must be in PATH.
-    if ! which zeek-config >/dev/null 2>&1; then
-        echo "zeek-config not found" >&2
-        exit 1
-    fi
-
-    if [ "$1" = "zeekpath" ]; then
-        zeek-config --zeekpath
-    elif [ "$1" = "zeek_plugin_path" ]; then
-        # Combine the local tree and the system-wide path. This allows
-        # us to test on a local build or an installation made via zkg,
-        # which squirrels away the build.
-        echo "$(cd "${base}/../.." && pwd)/build:$(zeek-config --plugin_dir)"
-    elif [ "$1" = "path" ]; then
-        echo "${PATH}"
-    else
-        echo "usage: $(basename "$0") <var>" >&2
-        exit 1
-    fi
-fi
-'''
-    with open(os.path.join(scriptsFolder, "get-zeek-env"), "w") as currentFile:
-        currentFile.write(getZeekEnvScript)
-
-#     standaloneContent = '''\
-# # Warning! This is an automatically generated file!
-# #
-# # @TEST-DOC: Test parsing behavior of {0}.
-# #
-# # @TEST-EXEC: spicyc ${{DIST}}/analyzer/{1}.spicy -j -d -o {1}.hlto
-# #
-# # TODO: Add/adapt standalone parsing tests here.
-# # @TEST-EXEC: printf "test string" | spicy-dump -p {2}::{3} {1}.hlto > output 2>&1
-# # @TEST-EXEC: TEST_DIFF_CANONIFIER= btest-diff output
-# '''.format(utils.PROTOCOL_NAME, utils.PROTOCOL_NAME.lower(), utils.normalizedScope(entryPointScope, "object"), entryPointName)
-
-#     with open(os.path.join(testsFolder, "standalone.spicy"), "w") as currentFile:
-#         currentFile.write(standaloneContent)
+    #data = {
+    #    "protocolName": utils.PROTOCOL_NAME,
+    #    "protocolNameLower": utils.PROTOCOL_NAME.lower(),
+    #    "scope": utils.normalizedScope(entryPointScope, "object"),
+    #    "entryPointName": entryPointName
+    #}
+    #
+    #copyTemplateFile(os.path.join("templates", "standalone.spicy.in"),
+    #                 data,
+    #                 os.path.join(testsFolder, "standalone.spicy"))
 
     # TODO: Deal with trace tests?
-    
+
+# This is creating side effects somewhere...    
 def writeZeekFiles(configuration, outRootFolder, zeekTypes, zeekMainFileObject, bitfields, enums, objects, switches):
     # Create basic zeek files 
     scriptsFolder = os.path.join(outRootFolder, "scripts")
@@ -629,56 +448,99 @@ def writeZeekFiles(configuration, outRootFolder, zeekTypes, zeekMainFileObject, 
     
     scriptFiles = []
     scriptFiles.append("__load__.zeek")
-    with open(os.path.join(scriptsFolder, "__load__.zeek"), "w") as currentFile:
-        currentFile.write("@load ./main\n")
-        if configuration.signatureFile is not None:
-            currentFile.write("@load-sigs dpd.sig\n")
+    sigsString = ""
+    if configuration.signatureFile is not None:
+        sigsString = "@load-sigs dpd.sig\n"
+    data = { "sigsString": sigsString }
+    copyTemplateFile(os.path.join("templates", "__load__.zeek.in"), data,
+                     os.path.join(scriptsFolder, "__load__.zeek"))
 
     scriptFiles.append("main.zeek")
-    with open (os.path.join(scriptsFolder, "main.zeek"), "w") as currentFile:
-        currentFile.write(zeekMainFileObject.generateMainFile(utils.USES_LAYER_2, configuration.ethernetProtocolNumber))
-        currentFile.write("\n")
-        currentFile.write(zeekMainFileObject.addLoggingFunction())
+    data = {
+        "mainContents": zeekMainFileObject.generateMainFile(utils.USES_LAYER_2, configuration.ethernetProtocolNumber),
+        "loggingFunctions": zeekMainFileObject.addLoggingFunction()
+    }
+    copyTemplateFile(os.path.join("templates", "main.zeek.in"), data,
+                     os.path.join(scriptsFolder, "main.zeek"))
         
-    if configuration.signatureFile is not None: 
-        with open(os.path.join(scriptsFolder, "dpd.sig"), "w") as currentFile:
-            currentFile.write(configuration.signatureFile)
+    if configuration.signatureFile is not None:
+        writeDataToFile(configuration.signatureFile,
+                        os.path.join(scriptsFolder, "dpd.sig"))
             
     # Create all the other files
     for scope in configuration.scopes:
         normalScope = utils.normalizedScope(scope, "")
-        enumScope = utils.normalizedScope(scope, "enum")
-        zeekProcessingFileName = normalScope.lower() + "_processing.zeek"
-        zeekTypesFileName = normalScope.lower() + "_types.zeek"
         zeekObjects = zeekTypes[normalScope]
+
+        zeekTypesFileName = normalScope.lower() + "_types.zeek"        
         scriptFiles.append(zeekTypesFileName)
-        with open(os.path.join(scriptsFolder, zeekTypesFileName), "w") as currentFile:
-            currentFile.write("module {};\n\nexport {{\n".format(normalScope))
-            for zeekLog in zeekObjects.values():
-                currentFile.write(zeekLog.createRecord())
-            currentFile.write("}\n")
+        contentString = ""
+        for zeekLog in zeekObjects.values():
+            # Is this creating the side effects?
+            contentString += zeekLog.createRecord()
+        data = {
+            "scope": normalScope,
+            "contents": contentString
+        }
+        copyTemplateFile(os.path.join("templates", "zeek_types.zeek.in"), data,
+                         os.path.join(scriptsFolder, zeekTypesFileName))
+
+        zeekProcessingFileName = normalScope.lower() + "_processing.zeek"
         scriptFiles.append(zeekProcessingFileName)
-        with open(os.path.join(scriptsFolder, zeekProcessingFileName), "w") as currentFile:
-            currentFile.write("module {};\n\n".format(normalScope))
-            eventString = ""
-            functionString = ""
-            for zeekLog in zeekObjects.values():
-                eventString += zeekLog.addHook()
-                functionString += zeekLog.addFunctions(normalScope, enums, bitfields, objects, switches, configuration.scopes)
-                functionString += "\n"
-            currentFile.write(eventString)
-            currentFile.write(functionString)
+        eventString = ""
+        functionString = ""
+        for zeekLog in zeekObjects.values():
+            eventString += zeekLog.addHook()
+            functionString += "{0}\n".format(zeekLog.addFunctions(normalScope, enums, bitfields, objects, switches, configuration.scopes))
+        data = {
+            "scope": normalScope,
+            "eventString": eventString,
+            "functionString": functionString
+        }
+        copyTemplateFile(os.path.join("templates", "zeek_processing.zeek.in"), data,
+                         os.path.join(scriptsFolder, zeekProcessingFileName))
+        
+        enumScope = utils.normalizedScope(scope, "enum")
         if enumScope in enums:
             zeekEnumFile = normalScope.lower() + "_enum.zeek"
             scriptFiles.append(zeekEnumFile)
-            with open(os.path.join(scriptsFolder, zeekEnumFile), "w") as currentFile:
-                currentFile.write("module {0};\n\n".format(enumScope))   
-                currentFile.write("export {\n") 
-                for currentEnumName in enums[enumScope]:
-                    currentFile.write(enums[enumScope][currentEnumName].createZeekEnumString(enumScope))
-                currentFile.write("}")
+            contents = ""
+            for currentEnumName in enums[enumScope]:
+                contents += enums[enumScope][currentEnumName].createZeekEnumString(enumScope)
+            data = {
+                "scope": enumScope,
+                "contents": contents
+            }
+            copyTemplateFile(os.path.join("templates", "zeek_enum.zeek.in"),
+                             data,
+                             os.path.join(scriptsFolder, zeekEnumFile))
             
     return scriptFiles
+    
+def generateBaseConversionFunctions(configuration):
+    returnString = ""
+    if bool(configuration.customFieldTypes):
+        for itemName in configuration.customFieldTypes:
+            item = configuration.customFieldTypes[itemName]
+            returnType = item.returnType  
+            emptyReturn = 0
+            if "string" == returnType:
+                returnType = "std::" + returnType
+                emptyReturn = "\"\""
+            elif "bytes" == returnType:
+                returnType = "hilti::rt::Bytes"
+                emptyReturn = "hilti::rt::Bytes()"
+            returnString += "{0}{1} {2}(const hilti::rt::Bytes &data)".format(utils.SINGLE_TAB, returnType, item.interpretingFunction)
+            returnString += "{0}{{\n{1}return {2};\n{0}}}\n".format(utils.SINGLE_TAB, utils.DOUBLE_TAB, emptyReturn)
+    return returnString
+    
+def generateBaseSpicyConversionFunctions(configuration, scope):
+    returnString = ""
+    if bool(configuration.customFieldTypes):
+        for itemName in configuration.customFieldTypes:
+            item = configuration.customFieldTypes[itemName]
+            returnString += "public function {0}(input: bytes) : {1} &cxxname=\"{2}::{0}\";\n\n".format(item.interpretingFunction, item.returnType, scope)
+    return returnString
     
 def writeSpicyFiles(configuration, outRootFolder, crossScopeItems, bitfields, enums, objects, switches, entryPointScope, entryPointName):
     # Create basic spicy files
@@ -686,16 +548,15 @@ def writeSpicyFiles(configuration, outRootFolder, crossScopeItems, bitfields, en
     os.makedirs(analyzerFolder, exist_ok=True)
 
     zeekConfirmationFile = "zeek_{}.spicy".format(utils.PROTOCOL_NAME.lower())
-    with open(os.path.join(analyzerFolder, zeekConfirmationFile), "w") as currentFile:
-        currentFile.write("module Zeek_{};\n\n".format(utils.PROTOCOL_NAME))
-        currentFile.write("import {};\n".format(utils.normalizedScope(utils.DEFAULT_SCOPE, "")))
-        currentFile.write("import spicy;\n\n")
-        currentFile.write("on {}::Messages::%done {{\n".format(utils.normalizedScope(utils.DEFAULT_SCOPE, "")))
-        currentFile.write("{}spicy::accept_input();\n".format(utils.SINGLE_TAB))
-        currentFile.write("}\n\n")
-        currentFile.write("on {}::Messages::%error {{\n".format(utils.normalizedScope(utils.DEFAULT_SCOPE, "")))
-        currentFile.write("{}spicy::decline_input(\"error parsing {} message\");\n".format(utils.SINGLE_TAB, utils.PROTOCOL_NAME))
-        currentFile.write("}\n\n")
+    data = {
+        "protocolName": utils.PROTOCOL_NAME,
+        "scope": utils.normalizedScope(utils.DEFAULT_SCOPE, ""),
+        "tab": utils.SINGLE_TAB
+    }
+    
+    copyTemplateFile(os.path.join("templates", "zeekConfirmationFile.spicy.in"),
+                     data,
+                     os.path.join(analyzerFolder, zeekConfirmationFile))
 
     sourceFiles = []
     sourceFiles.append(zeekConfirmationFile)
@@ -703,40 +564,27 @@ def writeSpicyFiles(configuration, outRootFolder, crossScopeItems, bitfields, en
     normalScope = utils.normalizedScope(utils.CONVERSION_SCOPE, "")
     spicyConversionFile = normalScope.lower() + ".spicy"
     ccConversionFile = normalScope.lower() + ".cc"
-    sourceFiles.append(spicyConversionFile)
-    sourceFiles.append(ccConversionFile)
-    with open(os.path.join(analyzerFolder, spicyConversionFile), "w") as spicyOut:
-        spicyOut.write("module {0};\n\n".format(normalScope))
-        spicyOut.write("public function generateId() : string &cxxname=\"{}::generateId\";\n\n".format(normalScope))
-        if bool(configuration.customFieldTypes):
-            for itemName in configuration.customFieldTypes:
-                item = configuration.customFieldTypes[itemName]
-                spicyOut.write("public function {0}(input: bytes) : {1} &cxxname=\"{2}::{0}\";\n\n".format(item.interpretingFunction, item.returnType, normalScope))
     
+    sourceFiles.append(spicyConversionFile)
+    
+    data = {
+        "scope": normalScope,
+        "functions": generateBaseSpicyConversionFunctions(configuration, normalScope)
+    }
+    copyTemplateFile(os.path.join("templates", "conversion.spicy.in"), data,
+                     os.path.join(analyzerFolder, spicyConversionFile))
+    
+    sourceFiles.append(ccConversionFile)
     if configuration.conversionFile is not None:
-        with open(os.path.join(analyzerFolder, ccConversionFile), "w") as currentFile:
-            currentFile.write(configuration.conversionFile)
+        writeDataToFile(configuration.conversionFile,
+                        os.path.join(analyzerFolder, ccConversionFile))
     else:
-        with open(os.path.join(analyzerFolder, ccConversionFile), "w") as currentFile:
-            # TODO: Figure out actually useful paths for these includes
-            #currentFile.write("#include <string>\n#include <iostream>\n#include <algorithm>\n#include <random>\n#include \"{0}\"\n#include \"{1}\"\n\n".format("/opt/zeek/include/spicy/rt/libspicy.h", "/opt/zeek/include/hilti/rt/libhilti.h"))
-            currentFile.write("#include <string>\n#include <iostream>\n#include <algorithm>\n#include <random>\n#include {0}\n#include {1}\n\n".format("<hilti/rt/libhilti.h>", "<spicy/rt/libspicy.h>"))
-            currentFile.write("namespace {0}\n{{\n#define ID_LEN 9\n".format(normalScope))
-            currentFile.write(utils.generateIdFunction)
-            if bool(configuration.customFieldTypes):
-                for itemName in configuration.customFieldTypes:
-                    item = configuration.customFieldTypes[itemName]
-                    returnType = item.returnType  
-                    emptyReturn = 0
-                    if "string" == returnType:
-                        returnType = "std::" + returnType
-                        emptyReturn = "\"\""
-                    elif "bytes" == returnType:
-                        returnType = "hilti::rt::Bytes"
-                        emptyReturn = "hilti::rt::Bytes()"
-                    currentFile.write("{0}{1} {2}(const hilti::rt::Bytes &data)".format(utils.SINGLE_TAB, returnType, item.interpretingFunction))
-                    currentFile.write("{0}{{\n{1}return {2};\n{0}}}\n".format(utils.SINGLE_TAB, utils.DOUBLE_TAB, emptyReturn))
-            currentFile.write("}\n")
+        data = {
+            "scope": normalScope,
+            "functions": generateBaseConversionFunctions(configuration)
+        }
+        copyTemplateFile(os.path.join("templates", "conversion.cc.in"), data,
+                         os.path.join(analyzerFolder, ccConversionFile))
             
     transportProtocols = []
 
@@ -753,86 +601,120 @@ def writeSpicyFiles(configuration, outRootFolder, crossScopeItems, bitfields, en
         outputFileName = normalScope.lower() + ".spicy"
         evtFileName = normalScope.lower() + ".evt"
         sourceFiles.append(outputFileName)
-        with open(os.path.join(analyzerFolder, outputFileName), "w") as currentFile:
-            currentFile.write("module {0};\n\n".format(normalScope))
-            currentFile.write("import spicy;\n\n")
+        # Figure out the scope file
+        additionalScopes = ""
+        if normalScope in crossScopeItems:
+            for usedScope in crossScopeItems[normalScope]:
+                if usedScope != "":
+                    additionalScopes += "import {0};\n".format(usedScope)
+            additionalScopes += "\n"
+        
+        entryPointClass = ""
+        if scope == entryPointScope:
+            entryPointClass = "public type {0}s = unit {{\n{1} : {0}[];\n}};\n\n".format(entryPointName, utils.SINGLE_TAB)
+        
+        objectsString = ""
+        if normalScope in objects:
+            for currentObjectName in objects[normalScope]:
+                # TODO: Other cases where things need to be public?
+                shouldBePublic = currentObjectName == entryPointName
+                objectsString += "{0}\n".format(objects[normalScope][currentObjectName].createSpicyString(configuration.customFieldTypes, bitfields, switches, enums, shouldBePublic))
+        
+        data = {
+            "scope": normalScope,
+            "additionalScopes": additionalScopes,
+            "entryPoint": entryPointClass,
+            "objectsString": objectsString
+        }
+        copyTemplateFile(os.path.join("templates", "scope.spicy.in"),
+                         data,
+                         os.path.join(analyzerFolder, outputFileName))
+        
+        # Figure out the event file
+        sourceFiles.append(evtFileName)
+        additionalScopes = ""
+        if normalScope in crossScopeItems:
+            for usedScope in crossScopeItems[normalScope]:
+                if usedScope != "":
+                    additionalScopes += "import {0};\n".format(usedScope)
+        
+        protocolEvents = ""
+        if normalScope == utils.normalizedScope(utils.DEFAULT_SCOPE, ""):
+            protocolEvents = generateProtocolEvents(normalScope, entryPointScope, entryPointName, transportProtocols, configuration.ports, utils.USES_LAYER_2)
+        
+        entryPointEvent = ""
+        if scope == entryPointScope:
+            entryPointEvent = "export {}::{}s;\n".format(normalScope, entryPointName)
             
-            if normalScope in crossScopeItems:
-                for usedScope in crossScopeItems[normalScope]:
-                    if usedScope != "":
-                        currentFile.write("import {0};\n".format(usedScope))
-                currentFile.write("\n")
-            
-            if scope == entryPointScope:
-                currentFile.write("public type {0}s = unit {{\n{1} : {0}[];\n}};\n\n".format(entryPointName, utils.SINGLE_TAB))
-            if normalScope in objects:
-                for currentObjectName in objects[normalScope]:
-                    # TODO: Other cases where things need to be public?
-                    shouldBePublic = currentObjectName == entryPointName
-                    currentFile.write("{0}\n".format(objects[normalScope][currentObjectName].createSpicyString(configuration.customFieldTypes, bitfields, switches, enums, shouldBePublic)))
-            currentFile.write("# vim: ai si tabstop=4 shiftwidth=4 softtabstop=4 expandtab colorcolumn=101 syntax=spicy\n")
-        with open(os.path.join(analyzerFolder, evtFileName), "w") as currentFile:
-            currentFile.write("import {};\n".format(normalScope))
-            if normalScope in crossScopeItems:
-                for usedScope in crossScopeItems[normalScope]:
-                    if usedScope != "":
-                        currentFile.write("import {0};\n".format(usedScope))
-            currentFile.write("import Zeek_{};\n\n".format(utils.PROTOCOL_NAME))
-            if normalScope == utils.normalizedScope(utils.DEFAULT_SCOPE, ""):
-                currentFile.write(generateProtocolEvents(normalScope, entryPointScope, entryPointName, transportProtocols, configuration.ports, utils.USES_LAYER_2))
-            scopedObjects = objects[normalScope]
-            if scope == entryPointScope:
-                currentFile.write("export {}::{}s;\n".format(normalScope, entryPointName))
-            for object in scopedObjects:
-                if not scopedObjects[object].logWithParent or scopedObjects[object].logIndependently:
-                    if scopedObjects[object].needsSpecificExport:
-                        exportString = "export {}::{} ".format(normalScope, object)
-                        if len(scopedObjects[object].excludedFields) < len(scopedObjects[object].includedFields):
-                            exportString += "without { "
-                            for field in scopedObjects[object].excludedFields:
-                                exportString += field
-                                if field != scopedObjects[object].excludedFields[-1]:
-                                    exportString += ", "
-                        else:
-                            exportString += "with { "
-                            for field in scopedObjects[object].includedFields:
-                                exportString += field.name
-                                if field != scopedObjects[object].includedFields[-1]:
-                                    exportString += ", "
-                        exportString += " };\n"
-                        currentFile.write(exportString)
+        scopedObjects = objects[normalScope]
+        exportString = ""
+        for object in scopedObjects:
+            if not scopedObjects[object].logWithParent or scopedObjects[object].logIndependently:
+                exportString += "export {}::{}".format(normalScope, object)
+                if scopedObjects[object].needsSpecificExport:
+                    exportString += " "
+                    if len(scopedObjects[object].excludedFields) < len(scopedObjects[object].includedFields):
+                        exportString += "without { "
+                        for field in scopedObjects[object].excludedFields:
+                            exportString += field
+                            if field != scopedObjects[object].excludedFields[-1]:
+                                exportString += ", "
                     else:
-                        currentFile.write("export {}::{};\n".format(normalScope, object))
-            currentFile.write("\n".format())
-            for object in scopedObjects.values():
-                event = object.getEvent(normalScope)
-                if event != []:
-                    currentFile.write(event.generateEvent(bitfields))
-        sourceFiles.append(evtFileName) 
+                        exportString += "with { "
+                        for field in scopedObjects[object].includedFields:
+                            exportString += field.name
+                            if field != scopedObjects[object].includedFields[-1]:
+                                exportString += ", "
+                    exportString += " }"
+                exportString += ";\n"
+        exportString += "\n"
+        
+        objectEvents = ""
+        for object in scopedObjects.values():
+            event = object.getEvent(normalScope)
+            if event != []:
+                objectEvents += event.generateEvent(bitfields)
+
+        data = {
+            "scope": normalScope,
+            "additionalScopes": additionalScopes,
+            "protocolName": utils.PROTOCOL_NAME,
+            "protocolEvents": protocolEvents,
+            "entryPointEvent": entryPointEvent,
+            "exportString": exportString,
+            "objectEvents": objectEvents
+        }
+        
+        copyTemplateFile(os.path.join("templates", "events.evt.in"), data,
+                         os.path.join(analyzerFolder, evtFileName))
+
         if enumScope in enums:
             enumOutputFileName = enumScope.lower() + ".spicy"
             sourceFiles.append(enumOutputFileName)
-            with open(os.path.join(analyzerFolder, enumOutputFileName), "w") as currentFile:
-                currentFile.write("module {0};\n\n".format(enumScope))
-                for currentEnumName in enums[enumScope]:
-                    currentFile.write("{0}\n".format(enums[enumScope][currentEnumName].createSpicyEnumString()))
-                currentFile.write("# vim: ai si tabstop=4 shiftwidth=4 softtabstop=4 expandtab colorcolumn=101 syntax=spicy\n")
+            contentString = ""
+            for currentEnumName in enums[enumScope]:
+                contentString += "{0}\n".format(enums[enumScope][currentEnumName].createSpicyEnumString())
+            data = {
+                "scope": enumScope,
+                "contents": contentString
+            }
+            copyTemplateFile(os.path.join("templates", "enum.spicy.in"), data,
+                             os.path.join(analyzerFolder, enumOutputFileName))
                 
     return (analyzerFolder, sourceFiles)
         
 def writeLastCMakeFile(analyzerFolder, scriptFiles, sourceFiles):
     # Create CMakeLists.txt file with all the sources and scripts
-
-    buildContents = '''\
-spicy_add_analyzer(
-    NAME {0}
-    PACKAGE_NAME {0}
-    SOURCES {1}
-    SCRIPTS {2}
-)
-'''.format(utils.PROTOCOL_NAME, " ".join(sourceFiles), " ".join(scriptFiles))
-    with open(os.path.join(analyzerFolder, "CMakeLists.txt"), "w") as currentFile:
-        currentFile.write(buildContents)
+    
+    data = {
+        "protocolName": utils.PROTOCOL_NAME,
+        "sources": " ".join(sourceFiles),
+        "scripts": " ".join(scriptFiles)
+    }
+    
+    copyTemplateFile(os.path.join("templates", "analyzer_CMakeLists.txt.in"),
+                     data,
+                     os.path.join(analyzerFolder, "CMakeLists.txt"))
     
 def writeParserFiles(configuration, outRootFolder, zeekTypes, zeekMainFileObject, crossScopeItems, bitfields, enums, objects, switches, entryPointScope, entryPointName):
     # Create base folder
