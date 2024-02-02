@@ -133,8 +133,11 @@ def _valueOrDefault(item, key, default):
     #    return item.get(key)
     return default
     
+def getItemName(itemScope, item, itemType):
+    return item.name
+    
 def addItemNode(itemScope, item, itemType, nodeInformation, metaData, userDefinedTypes):
-    name = item.name
+    name = getItemName(itemScope, item, itemType)
     if metaData is None:
         metaData = {}
     metaData["logIndependently"] = _valueOrDefault(item, "logIndependently", False)

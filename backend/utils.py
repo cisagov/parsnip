@@ -102,106 +102,127 @@ def determineSpicyStringForAction(action, switch, inputs, actionColumn, customTy
     _, typeString = determineSpicyStringForType(action.name, action.type, action.elementType, action.referenceType, action.scope, action.size, tempInputs, mappedUntilValue, actionColumn, customTypes, bitfields, switches, enums)
     return "{0}{1} : {2}".format(action.name, endingSpace(actionColumn, len(action.name)), typeString)
     
+def _returnIntegerType(itemType, size, columns, itemName):
+    if size in [8, 16, 32, 64]:
+        return ("", itemType + str(size))
+    elif 24 == size:
+        sizeInBytes = int(ceil(size / 8))
+        returnString = "bytes &size={0} {{\n".format(sizeInBytes)
+        returnString += "{0}{1}   self.{2} = $$.to_uint(spicy::ByteOrder::Big);\n".format(DOUBLE_TAB, endingSpace(columns, 0), itemName)
+        returnString += "{0}{1}   }}".format(SINGLE_TAB, endingSpace(columns, 0))
+        
+        return (itemType + "64", returnString)
+    else:
+        print("Current unsupported (u)int size {0}".format(size))
+        return ("","")
+        
+def _returnSpicyObjectType(itemType, enums, scope, referenceType, inputs):
+    outputString = ""
+    if "enum" == itemType:
+        reference = enums[scope][referenceType]
+        outputString += "uint{0}".format(reference.size)
+        if "little" == reference.endianness:
+            outputString += " &byte-order=spicy::ByteOrder::Little"
+        outputString += " &convert="
+    outputString += "{0}::{1}".format(scope, referenceType)
+    
+    if "enum" == itemType:
+        outputString += "($$)"
+    elif 0 < len(inputs):
+        outputString += "("
+        for index, value in enumerate(inputs):
+            outputString += value.source
+            if index < len(inputs) - 1:
+                outputString += ", "
+        outputString += ")"
+    return ("", outputString)
+    
+def _returnFloatType(size):
+    if 32 == size:
+        return ("", "real &type=spicy::RealType::IEEE754_Single")
+    elif 64 == size:
+        return ("", "real &type=spicy::RealType::IEEE754_Double")
+    else:
+        print("Currently unknown float size {0}".format(size))
+        return ("", "")
+        
+def _returnAddrType(size):
+    if size == 32:
+        return ("", "addr &ipv4")
+    elif size == 128:
+        return ("", "addr &ipv6")
+        
+def _returnBitsType(bitfields, scope, referenceType, columns):
+    # Have to get size from the reference
+    reference = bitfields[scope][referenceType]
+    outputString = "bitfield({0}) {{\n".format(reference.size)
+    for field in reference.fields:
+        if field.notes is not None and "" != field.notes:
+            outputString += "{0}{1}   # {2}\n".format(DOUBLE_TAB, endingSpace(columns, 0), field.notes)
+        conversionString = ""
+        if "enum" == field.type:
+            conversionString = " &convert={0}::{1}($$)".format(field.scope, field.referenceType)
+        elif "bool" == field.type:
+            conversionString = " &convert=cast<bool>($$)"
+        outputString += "{0}{1}   {2}{3} : {4}{5};\n".format(DOUBLE_TAB, endingSpace(columns, 0), field.name, endingSpace(reference.column, len(field.name)), field.bits, conversionString)
+    outputString += "{0}{1}   }}".format(SINGLE_TAB, endingSpace(columns, 0))
+    if "little" == reference.endianness:
+        outputString += " &byte-order=spicy::ByteOrder::Little"
+    return ("", outputString)
+    
+def _returnListType(itemName, elementType, referenceType, scope, size, inputs, customTypes, bitfields, switches, enums, until):
+    varString, typeString = determineSpicyStringForType(itemName, elementType, None, referenceType, scope, size, inputs, None, 0, customTypes, bitfields, switches, enums)
+    sizeString = ""
+    conditionString = ""
+    if until is not None and until.get("conditionType") is not None:
+        conditionType = until.get("conditionType")
+        if "ENDOFDATA" == conditionType:
+            conditionString = " &eod"
+        elif "COUNT" == conditionType:
+            sizeString = until.get("indicator")
+            if until.get("minus") is not None:
+                sizeString = "({} - {})".format(sizeString, until.get("minus"))
+        else:
+            print("Unknown list condition type of {0}".format(conditionType))
+    typeString = "({0})[{1}]{2}".format(typeString, sizeString, conditionString)
+    
+    return (varString, typeString)
+    
+def _returnSwitchType(scope, referenceType, inputs, customTypes, bitfields, switches, enums):
+    reference = switches[scope][referenceType]
+    outputString = "switch({0}) {{\n".format(inputs[0].source)
+    for option in reference.options:
+        if option.action.type != "void":
+            preString = ""
+            if "enum" == reference.dependsOn.type:
+                preString = "{0}::{1}::".format(reference.dependsOn.scope, reference.dependsOn.referenceType)
+            outputString += "{0}{1}{2}{3} -> {4};\n".format(DOUBLE_TAB, preString, option.value, endingSpace(reference.column, len(str(option.value))), determineSpicyStringForAction(option.action, reference, inputs, reference.actionColumn, customTypes, bitfields, switches, enums))
+    defaultActionString = "void"
+    if reference.default is not None and reference.default.type != "void":
+        defaultActionString = determineSpicyStringForAction(reference.default, reference, inputs, reference.actionColumn, customTypes, bitfields, switches, enums)
+    outputString += "{0}*{1}{2} -> {3};\n".format(DOUBLE_TAB, " "*len(preString), endingSpace(reference.column, 1), defaultActionString)
+    outputString += "{0}}}".format(SINGLE_TAB)
+    return ("", outputString)
+        
 def determineSpicyStringForType(itemName, itemType, elementType, referenceType, scope, size, inputs, until, columns, customTypes, bitfields, switches, enums):
     if itemType in ["uint", "int"]:
-        if size in [8, 16, 32, 64]:
-            return ("", itemType + str(size))
-        elif 24 == size:
-            sizeInBytes = int(ceil(size / 8))
-            returnString = "bytes &size={0} {{\n".format(sizeInBytes)
-            returnString += "{0}{1}   self.{2} = $$.to_uint(spicy::ByteOrder::Big);\n".format(DOUBLE_TAB, endingSpace(columns, 0), itemName)
-            returnString += "{0}{1}   }}".format(SINGLE_TAB, endingSpace(columns, 0))
-            
-            return (itemType + "64", returnString)
-        else:
-            print("Current unsupported (u)int size {0}".format(size))
-            return ("","")
+        return _returnIntegerType(itemType, size, columns, itemName)
     elif itemType in ["object", "enum"]:
-        outputString = ""
-        if "enum" == itemType:
-            reference = enums[scope][referenceType]
-            outputString += "uint{0}".format(reference.size)
-            if "little" == reference.endianness:
-                outputString += " &byte-order=spicy::ByteOrder::Little"
-            outputString += " &convert="
-        outputString += "{0}::{1}".format(scope, referenceType)
-        
-        if "enum" == itemType:
-            outputString += "($$)"
-        elif 0 < len(inputs):
-            outputString += "("
-            for index, value in enumerate(inputs):
-                outputString += value.source
-                if index < len(inputs) - 1:
-                    outputString += ", "
-            outputString += ")"
-        return ("", outputString)
+        return _returnSpicyObjectType(itemType, enums, scope, referenceType, inputs)
     elif "bytes" == itemType:
         return ("", "bytes &size={0}".format(int(ceil(size / 8))))
     elif "float" == itemType:
-        if 32 == size:
-            return ("", "real &type=spicy::RealType::IEEE754_Single")
-        elif 64 == size:
-            return ("", "real &type=spicy::RealType::IEEE754_Double")
-        else:
-            print("Currently unknown float size {0}".format(size))
-            return ("", "")
+        return _returnFloatType(size)
     elif "addr" == itemType:
-        if size == 32:
-            return ("", "addr &ipv4")
-        elif size == 128:
-            return ("", "addr &ipv6")
+        return _returnAddrType(size)
     elif "bits" == itemType:
-        # Have to get size from the reference
-        reference = bitfields[scope][referenceType]
-        outputString = "bitfield({0}) {{\n".format(reference.size)
-        for field in reference.fields:
-            if field.notes is not None and "" != field.notes:
-                outputString += "{0}{1}   # {2}\n".format(DOUBLE_TAB, endingSpace(columns, 0), field.notes)
-            conversionString = ""
-            if "enum" == field.type:
-                conversionString = " &convert={0}::{1}($$)".format(field.scope, field.referenceType)
-            elif "bool" == field.type:
-                conversionString = " &convert=cast<bool>($$)"
-            outputString += "{0}{1}   {2}{3} : {4}{5};\n".format(DOUBLE_TAB, endingSpace(columns, 0), field.name, endingSpace(reference.column, len(field.name)), field.bits, conversionString)
-        outputString += "{0}{1}   }}".format(SINGLE_TAB, endingSpace(columns, 0))
-        if "little" == reference.endianness:
-            outputString += " &byte-order=spicy::ByteOrder::Little"
-        return ("", outputString)
+        return _returnBitsType(bitfields, scope, referenceType, columns)
     elif "list" == itemType:
-        varString, typeString = determineSpicyStringForType(itemName, elementType, None, referenceType, scope, size, inputs, None, 0, customTypes, bitfields, switches, enums)
-        sizeString = ""
-        conditionString = ""
-        if until is not None and until.get("conditionType") is not None:
-            conditionType = until.get("conditionType")
-            if "ENDOFDATA" == conditionType:
-                conditionString = " &eod"
-            elif "COUNT" == conditionType:
-                sizeString = until.get("indicator")
-                if until.get("minus") is not None:
-                    sizeString = "({} - {})".format(sizeString, until.get("minus"))
-            else:
-                print("Unknown list condition type of {0}".format(conditionType))
-        typeString = "({0})[{1}]{2}".format(typeString, sizeString, conditionString)
-        
-        return (varString, typeString)
+        return _returnListType(itemName, elementType, referenceType, scope, size, inputs, customTypes, bitfields, switches, enums, until)
     elif "string" == itemType:
         return ("", "string")
     elif "switch" == itemType:
-        reference = switches[scope][referenceType]
-        outputString = "switch({0}) {{\n".format(inputs[0].source)
-        for option in reference.options:
-            if option.action.type != "void":
-                preString = ""
-                if "enum" == reference.dependsOn.type:
-                    preString = "{0}::{1}::".format(reference.dependsOn.scope, reference.dependsOn.referenceType)
-                outputString += "{0}{1}{2}{3} -> {4};\n".format(DOUBLE_TAB, preString, option.value, endingSpace(reference.column, len(str(option.value))), determineSpicyStringForAction(option.action, reference, inputs, reference.actionColumn, customTypes, bitfields, switches, enums))
-        defaultActionString = "void"
-        if reference.default is not None and reference.default.type != "void":
-            defaultActionString = determineSpicyStringForAction(reference.default, reference, inputs, reference.actionColumn, customTypes, bitfields, switches, enums)
-        outputString += "{0}*{1}{2} -> {3};\n".format(DOUBLE_TAB, " "*len(preString), endingSpace(reference.column, 1), defaultActionString)
-        outputString += "{0}}}".format(SINGLE_TAB)
-        return ("", outputString)
+        return _returnSwitchType(scope, referenceType, inputs, customTypes, bitfields, switches, enums)
     elif itemType in customTypes:
         # See if it's custom type
         sizeInBytes = int(ceil(size / 8))

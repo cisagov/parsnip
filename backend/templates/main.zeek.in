@@ -1,2 +1,16 @@
+## main.zeek
+##
+## ICSNPP-${protocolName}
+##
+## Zeek script type/record definitions describing the information
+## that will be written to the log files.
+##
+## Author:   Melanie Pierce
+## Contact:  melanie.pierce@inl.gov
+##
+## Copyright (c) 2024 Battelle Energy Alliance, LLC.  All rights reserved.
+
+module ${protocolName};
+
 ${mainContents}
 ${loggingFunctions}

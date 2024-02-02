@@ -23,6 +23,32 @@ def writeNodes(nodes, outFilePath):
 def writeDataToFile(data, outFilePath):
     with open(outFilePath, "w") as outFile:
         outFile.write(data)
+        
+def createAndUseGraphInformation(configuration, objects, switches, bitfields, enums, entryPointScope, entryPointName, entryPointKey):
+    ############################################################################
+    # Load the structures as nodes
+    ############################################################################
+    graph, objectNodes, nodeInformation = generateGraph(configuration, objects, switches, bitfields, enums)
+    
+    ############################################################################
+    # Create actual graph
+    ############################################################################
+        
+    # Determine paths for every node from the EntryPoint Node
+    pathInformation = calculatePathInformation(graph, objectNodes, entryPointScope, entryPointKey, nodeInformation)
+    
+    # Look for cycles in the graph
+    cycles = nx.recursive_simple_cycles(graph)
+    
+    missingExpectedTopLevelNodes, expectedTopLevelNodes, unexpectedTopLevelNodes = determineTopLevelNodes(graph, [entryPointKey])
+    
+    ############################################################################
+    # Use the graph information
+    ############################################################################
+    printGraphWarnings(cycles, missingExpectedTopLevelNodes, unexpectedTopLevelNodes)
+    #saveGraphInformation(graph, pathInformation, cycles, missingExpectedTopLevelNodes, unexpectedTopLevelNodes)
+    
+    updateObjectsBasedOnGraphInformation(cycles, pathInformation, objects, entryPointScope, entryPointName)
 
 def generateProtocolEvents(normalScope, entryPointScope, entryPointName, trasportProtos, ports=[], usesLayer2=False):
     eventString = ""
@@ -72,27 +98,7 @@ def processDependency(item, currentScope, crossScopeList, customTypes, switches)
         normalConversionScope = utils.normalizedScope(utils.CONVERSION_SCOPE, "custom")
         _addCrossScopeItem(currentScope, normalConversionScope, "custom", item.type, crossScopeList)
         
-def generateGraph(configuration, objects, switches, bitfields, enums):
-    ################################################################################
-    # Tracking Structures
-    ################################################################################
-    # Assumption, no duplicates
-
-    # Nodes
-    nodeInformation = {}
-    objectNodes = []
-    dependencyNodeInformation = {}
-    # Connections due to type references
-    referenceInformation = []
-    depedencyReferenceInformation = []
-    # Connections due to fields
-    fieldsInformation = []
-    # Connections due to other dependencies
-    dependencyInformation = []
-    
-    ############################################################################
-    # Load the structures as nodes
-    ############################################################################
+def _addUserTypeNodes(configuration, nodeInformation):
     if bool(configuration.customFieldTypes):
         for name in configuration.customFieldTypes:
             item = configuration.customFieldTypes[name]
@@ -101,7 +107,8 @@ def generateGraph(configuration, objects, switches, bitfields, enums):
                 "returnType": item.returnType
             }
             graphing.addUserTypeNode(name, nodeInformation, metaData, configuration.customFieldTypes.keys())
-    
+            
+def _addObjectNodes(configuration, objects, nodeInformation, objectNodes, referenceInformation, fieldsInformation):
     for normalizedScope in objects:
         for objectName in objects[normalizedScope]:
             currentObject = objects[normalizedScope][objectName]
@@ -109,45 +116,38 @@ def generateGraph(configuration, objects, switches, bitfields, enums):
                                    "object", nodeInformation, None,
                                    configuration.customFieldTypes.keys())
             objectNodes.append(graphing.normalizedKey3(normalizedScope, "object", itemName))
-            # Look for references in the dependsOn section
-            if len(currentObject.dependsOn) > 0:
-                for dependency in currentObject.dependsOn:
-                    graphing.addDependencyNode(normalizedScope, "object",
-                                               itemName, dependency,
-                                               dependencyNodeInformation,
-                                               depedencyReferenceInformation,
-                                               dependencyInformation,
-                                               configuration.customFieldTypes.keys())
+            
             # Process the fields
             for field in currentObject.fields:
                 graphing.addFieldNode(normalizedScope, "object", itemName,
                                       field, "field", nodeInformation,
                                       referenceInformation, fieldsInformation,
                                       configuration.customFieldTypes.keys())
-    
+                                      
+def _addObjectDependencyNodes(configuration, objects, dependencyNodeInformation, dependencyReferenceInformation, dependencyInformation):
+    for normalizedScope in objects:
+        for objectName in objects[normalizedScope]:
+            currentObject = objects[normalizedScope][objectName]
+            itemName = graphing.getItemName(normalizedScope, currentObject, "object")
+            
+            # Look for references in the dependsOn section
+            if len(currentObject.dependsOn) > 0:
+                for dependency in currentObject.dependsOn:
+                    graphing.addDependencyNode(normalizedScope, "object",
+                                               itemName, dependency,
+                                               dependencyNodeInformation,
+                                               dependencyReferenceInformation,
+                                               dependencyInformation,
+                                               configuration.customFieldTypes.keys())
+                                      
+def _addSwitchNodes(configuration, switches, nodeInformation, referenceInformation, fieldsInformation):
     for normalizedScope in switches:
         for switchName in switches[normalizedScope]:
             currentSwitch = switches[normalizedScope][switchName]
             itemName = graphing.addItemNode(normalizedScope, currentSwitch,
                                             "switch", nodeInformation, None,
                                             configuration.customFieldTypes.keys())
-            # Process the main dependency
-            dependsOnSection = currentSwitch.dependsOn
-            graphing.addDependencyNode(normalizedScope, "switch", itemName,
-                                       dependsOnSection,
-                                       dependencyNodeInformation,
-                                       depedencyReferenceInformation,
-                                       dependencyInformation,
-                                       configuration.customFieldTypes.keys())
-            # Look for references in the additionalDependsOn section
-            if len(currentSwitch.additionalDependsOn) > 0:
-                for dependency in currentSwitch.additionalDependsOn:
-                    graphing.addDependencyNode(normalizedScope, "switch",
-                                               itemName, dependency,
-                                               dependencyNodeInformation,
-                                               depedencyReferenceInformation,
-                                               dependencyInformation,
-                                               configuration.customFieldTypes.keys())
+
             # Process the "fields"
             for option in currentSwitch.options:
                 actionSection = option.action
@@ -161,7 +161,31 @@ def generateGraph(configuration, objects, switches, bitfields, enums):
                                       action, "option", nodeInformation,
                                       referenceInformation, fieldsInformation,
                                       configuration.customFieldTypes.keys())
-        
+                                      
+def _addSwitchDependencyNodes(configuration, switches, dependencyNodeInformation, dependencyReferenceInformation, dependencyInformation):
+    for normalizedScope in switches:
+        for switchName in switches[normalizedScope]:
+            currentSwitch = switches[normalizedScope][switchName]
+            itemName = graphing.getItemName(normalizedScope, currentSwitch, "switch")
+            # Process the main dependency
+            dependsOnSection = currentSwitch.dependsOn
+            graphing.addDependencyNode(normalizedScope, "switch", itemName,
+                                       dependsOnSection,
+                                       dependencyNodeInformation,
+                                       dependencyReferenceInformation,
+                                       dependencyInformation,
+                                       configuration.customFieldTypes.keys())
+            # Look for references in the additionalDependsOn section
+            if len(currentSwitch.additionalDependsOn) > 0:
+                for dependency in currentSwitch.additionalDependsOn:
+                    graphing.addDependencyNode(normalizedScope, "switch",
+                                               itemName, dependency,
+                                               dependencyNodeInformation,
+                                               dependencyReferenceInformation,
+                                               dependencyInformation,
+                                               configuration.customFieldTypes.keys())
+                                      
+def _addBitfieldNodes(configuration, bitfields, nodeInformation, referenceInformation, fieldsInformation):
     for normalizedScope in bitfields:
         for bitfieldName in bitfields[normalizedScope]:
             currentBitfield = bitfields[normalizedScope][bitfieldName]
@@ -175,7 +199,8 @@ def generateGraph(configuration, objects, switches, bitfields, enums):
                                       "field", nodeInformation,
                                       referenceInformation, fieldsInformation,
                                       configuration.customFieldTypes.keys())
-        
+                                      
+def _addEnumNodes(configuration, enums, nodeInformation, referenceInformation, fieldsInformation):
     for normalizedScope in enums:
         for enumName in enums[normalizedScope]:
             currentEnum = enums[normalizedScope][enumName]
@@ -189,6 +214,49 @@ def generateGraph(configuration, objects, switches, bitfields, enums):
                                       "field", nodeInformation,
                                       referenceInformation, fieldsInformation,
                                       configuration.customFieldTypes.keys())
+                                      
+def _addNodes(configuration, objects, switches, bitfields, enums):    
+    ################################################################################
+    # Tracking Structures
+    ################################################################################
+    # Assumption, no duplicates
+
+    # Nodes
+    nodeInformation = {}
+    objectNodes = []
+    # Connections due to type references
+    referenceInformation = []
+    # Connections due to fields
+    fieldsInformation = []
+    
+    _addUserTypeNodes(configuration, nodeInformation)
+    
+    _addObjectNodes(configuration, objects, nodeInformation, objectNodes, referenceInformation, fieldsInformation)
+    
+    _addSwitchNodes(configuration, switches, nodeInformation, referenceInformation, fieldsInformation)
+    
+    _addBitfieldNodes(configuration, bitfields, nodeInformation, referenceInformation, fieldsInformation)
+    
+    _addEnumNodes(configuration, enums, nodeInformation, referenceInformation, fieldsInformation)
+    
+    # Dependency Information
+    # Not currently used, so removing for now
+    #dependencyNodeInformation = {}
+    #dependencyReferenceInformation = []
+    # Connections due to other dependencies
+    #dependencyInformation = []
+    
+    #_addObjectDependencyNodes(configuration, objects, dependencyNodeInformation, dependencyReferenceInformation, dependencyInformation)
+    #_addSwitchDependencyNodes(configuration, switches, dependencyNodeInformation, dependencyReferenceInformation, dependencyInformation)
+    
+    return (objectNodes, nodeInformation, fieldsInformation, referenceInformation)
+        
+def generateGraph(configuration, objects, switches, bitfields, enums):
+    ############################################################################
+    # Load the structures as nodes
+    ############################################################################
+    objectNodes, nodeInformation, fieldsInformation, referenceInformation = \
+        _addNodes(configuration, objects, switches, bitfields, enums)
                                       
     ############################################################################
     # Create actual graph
@@ -207,6 +275,43 @@ def generateGraph(configuration, objects, switches, bitfields, enums):
         
     return (graph, objectNodes, nodeInformation)
     
+def _processPath(path, entryPointScope, targetScope, nodeInformation):
+    tempPath = []
+    for element in path:
+        tempPath.append(element)
+    loggingParent = None
+    parentReason = ""
+    previousScope = None
+    pathInfo = {}
+    for element in tempPath[::-1]:
+        parts = element.split(".")
+        if len(parts) < 3:
+            continue
+        scope = parts[0]
+        #itemType = parts[1]
+        referenceType = parts[2]
+        if scope != targetScope:
+            loggingParent = utils.loggingParentScope(previousScope)
+            parentReason = "Scope Change"
+            break
+        metaData = nodeInformation[element][1]
+        if metaData is not None:
+            if "logIndependently" in metaData and True == metaData["logIndependently"]:
+                loggingParent = referenceType
+                parentReason = "Log Independently"
+                break
+        previousScope = scope
+    pathInfo["path"] = tempPath
+    if loggingParent is None:
+        pathInfo["needsLoggingParent"] = False
+        pathInfo["loggingParent"] = utils.loggingParentScope(entryPointScope)
+    else:
+        pathInfo["needsLoggingParent"] = True
+        pathInfo["loggingParent"] = loggingParent
+        pathInfo["reason"] = parentReason
+        
+    return pathInfo
+    
 def calculatePathInformation(graph, objectNodes, entryPointScope, entryPointKey, nodeInformation):
     # Determine paths for every node from the EntryPoint Node
     pathInformation = {}
@@ -222,40 +327,7 @@ def calculatePathInformation(graph, objectNodes, entryPointScope, entryPointKey,
         targetType = targetParts[1]
         targetName = targetParts[2]
         for path in nx.all_simple_paths(graph, source=entryPointKey, target=node):
-            pathInfo = {}
-            tempPath = []
-            for element in path:
-                tempPath.append(element)
-            loggingParent = None
-            parentReason = ""
-            previousScope = None
-            for element in tempPath[::-1]:
-                parts = element.split(".")
-                if len(parts) < 3:
-                    continue
-                scope = parts[0]
-                #itemType = parts[1]
-                referenceType = parts[2]
-                if scope != targetScope:
-                    loggingParent = utils.loggingParentScope(previousScope)
-                    parentReason = "Scope Change"
-                    break
-                metaData = nodeInformation[element][1]
-                if metaData is not None:
-                    if "logIndependently" in metaData and True == metaData["logIndependently"]:
-                        loggingParent = referenceType
-                        parentReason = "Log Independently"
-                        break
-                previousScope = scope
-            pathInfo["path"] = tempPath
-            if loggingParent is None:
-                pathInfo["needsLoggingParent"] = False
-                pathInfo["loggingParent"] = utils.loggingParentScope(entryPointScope)
-            else:
-                pathInfo["needsLoggingParent"] = True
-                pathInfo["loggingParent"] = loggingParent
-                pathInfo["reason"] = parentReason
-            paths.append(pathInfo)
+            paths.append(_processPath(path, entryPointScope, targetScope, nodeInformation))
         pathInformation["{0}::{1}".format(targetScope, targetName)] = paths
     return pathInformation
     
@@ -317,7 +389,7 @@ def saveGraphInformation(graph, pathInformation, cycles, missingExpectedTopLevel
                 if index < len(cycle) - 1:
                     cycleString += " -> "
             cycleString += "\n"
-        writeDataToFile("cycles.txt", cycleString);
+        writeDataToFile(cycleString, "cycles.txt");
     
     if 0 != len(missingExpectedTopLevelNodes):
         writeNodes(missingExpectedTopLevelNodes, "missing_expected_nodes.txt")
@@ -439,15 +511,10 @@ def writeTestFiles(outRootFolder):
     #                 os.path.join(testsFolder, "standalone.spicy"))
 
     # TODO: Deal with trace tests?
-
-# This is creating side effects somewhere...    
-def writeZeekFiles(configuration, outRootFolder, zeekTypes, zeekMainFileObject, bitfields, enums, objects, switches):
-    # Create basic zeek files 
-    scriptsFolder = os.path.join(outRootFolder, "scripts")
-    os.makedirs(scriptsFolder, exist_ok=True)
     
-    scriptFiles = []
-    scriptFiles.append("__load__.zeek")
+def _writeCoreZeekFiles(configuration, scriptsFolder, zeekMainFileObject):
+    coreFiles = []
+    coreFiles.append("__load__.zeek")
     sigsString = ""
     if configuration.signatureFile is not None:
         sigsString = "@load-sigs dpd.sig\n"
@@ -455,8 +522,9 @@ def writeZeekFiles(configuration, outRootFolder, zeekTypes, zeekMainFileObject, 
     copyTemplateFile(os.path.join("templates", "__load__.zeek.in"), data,
                      os.path.join(scriptsFolder, "__load__.zeek"))
 
-    scriptFiles.append("main.zeek")
+    coreFiles.append("main.zeek")
     data = {
+        "protocolName": utils.PROTOCOL_NAME,
         "mainContents": zeekMainFileObject.generateMainFile(utils.USES_LAYER_2, configuration.ethernetProtocolNumber),
         "loggingFunctions": zeekMainFileObject.addLoggingFunction()
     }
@@ -466,54 +534,74 @@ def writeZeekFiles(configuration, outRootFolder, zeekTypes, zeekMainFileObject, 
     if configuration.signatureFile is not None:
         writeDataToFile(configuration.signatureFile,
                         os.path.join(scriptsFolder, "dpd.sig"))
-            
+    return coreFiles
+    
+def _writeZeekTypeFiles(scriptsFolder, normalScope, zeekObjects):
+    contentString = ""
+    for zeekLog in zeekObjects.values():
+        # Is this creating the side effects?
+        contentString += zeekLog.createRecord()
+    data = {
+        "scope": normalScope,
+        "contents": contentString
+    }
+    zeekTypesFileName = normalScope.lower() + "_types.zeek"
+    copyTemplateFile(os.path.join("templates", "zeek_types.zeek.in"), data,
+                     os.path.join(scriptsFolder, zeekTypesFileName))
+    return [zeekTypesFileName]
+    
+def _writeZeekProcessingFiles(scriptsFolder, normalScope, zeekObjects, enums, bitfields, objects, switches, configuration):
+    eventString = ""
+    functionString = ""
+    for zeekLog in zeekObjects.values():
+        eventString += zeekLog.addHook()
+        functionString += "{0}\n".format(zeekLog.addFunctions(normalScope, enums, bitfields, objects, switches, configuration.scopes))
+    data = {
+        "scope": normalScope,
+        "eventString": eventString,
+        "functionString": functionString
+    }
+    zeekProcessingFileName = normalScope.lower() + "_processing.zeek"
+    copyTemplateFile(os.path.join("templates", "zeek_processing.zeek.in"), data,
+                     os.path.join(scriptsFolder, zeekProcessingFileName))
+    return [zeekProcessingFileName]
+    
+def _writeZeekEnumFiles(scriptsFolder, scope, normalScope, enums):
+    enumScope = utils.normalizedScope(scope, "enum")
+    if enumScope in enums:
+        contents = ""
+        for currentEnumName in enums[enumScope]:
+            contents += enums[enumScope][currentEnumName].createZeekEnumString(enumScope)
+        data = {
+            "scope": enumScope,
+            "contents": contents
+        }
+        zeekEnumFile = normalScope.lower() + "_enum.zeek"
+        copyTemplateFile(os.path.join("templates", "zeek_enum.zeek.in"),
+                         data,
+                         os.path.join(scriptsFolder, zeekEnumFile))
+        return [zeekEnumFile]
+    else:
+        return []
+
+# This is creating side effects somewhere...    
+def writeZeekFiles(configuration, outRootFolder, zeekTypes, zeekMainFileObject, bitfields, enums, objects, switches):
+    # Create basic zeek files 
+    scriptsFolder = os.path.join(outRootFolder, "scripts")
+    os.makedirs(scriptsFolder, exist_ok=True)
+    
+    scriptFiles = _writeCoreZeekFiles(configuration, scriptsFolder, zeekMainFileObject)
+    
     # Create all the other files
     for scope in configuration.scopes:
         normalScope = utils.normalizedScope(scope, "")
         zeekObjects = zeekTypes[normalScope]
 
-        zeekTypesFileName = normalScope.lower() + "_types.zeek"        
-        scriptFiles.append(zeekTypesFileName)
-        contentString = ""
-        for zeekLog in zeekObjects.values():
-            # Is this creating the side effects?
-            contentString += zeekLog.createRecord()
-        data = {
-            "scope": normalScope,
-            "contents": contentString
-        }
-        copyTemplateFile(os.path.join("templates", "zeek_types.zeek.in"), data,
-                         os.path.join(scriptsFolder, zeekTypesFileName))
+        scriptFiles += _writeZeekTypeFiles(scriptsFolder, normalScope, zeekObjects)
 
-        zeekProcessingFileName = normalScope.lower() + "_processing.zeek"
-        scriptFiles.append(zeekProcessingFileName)
-        eventString = ""
-        functionString = ""
-        for zeekLog in zeekObjects.values():
-            eventString += zeekLog.addHook()
-            functionString += "{0}\n".format(zeekLog.addFunctions(normalScope, enums, bitfields, objects, switches, configuration.scopes))
-        data = {
-            "scope": normalScope,
-            "eventString": eventString,
-            "functionString": functionString
-        }
-        copyTemplateFile(os.path.join("templates", "zeek_processing.zeek.in"), data,
-                         os.path.join(scriptsFolder, zeekProcessingFileName))
+        scriptFiles += _writeZeekProcessingFiles(scriptsFolder, normalScope, zeekObjects, enums, bitfields, objects, switches, configuration)
         
-        enumScope = utils.normalizedScope(scope, "enum")
-        if enumScope in enums:
-            zeekEnumFile = normalScope.lower() + "_enum.zeek"
-            scriptFiles.append(zeekEnumFile)
-            contents = ""
-            for currentEnumName in enums[enumScope]:
-                contents += enums[enumScope][currentEnumName].createZeekEnumString(enumScope)
-            data = {
-                "scope": enumScope,
-                "contents": contents
-            }
-            copyTemplateFile(os.path.join("templates", "zeek_enum.zeek.in"),
-                             data,
-                             os.path.join(scriptsFolder, zeekEnumFile))
+        scriptFiles += _writeZeekEnumFiles(scriptsFolder, scope, normalScope, enums)
             
     return scriptFiles
     
@@ -542,11 +630,7 @@ def generateBaseSpicyConversionFunctions(configuration, scope):
             returnString += "public function {0}(input: bytes) : {1} &cxxname=\"{2}::{0}\";\n\n".format(item.interpretingFunction, item.returnType, scope)
     return returnString
     
-def writeSpicyFiles(configuration, outRootFolder, crossScopeItems, bitfields, enums, objects, switches, entryPointScope, entryPointName):
-    # Create basic spicy files
-    analyzerFolder = os.path.join(outRootFolder, "analyzer")
-    os.makedirs(analyzerFolder, exist_ok=True)
-
+def _writeSpicyConfirmationFiles(analyzerFolder):
     zeekConfirmationFile = "zeek_{}.spicy".format(utils.PROTOCOL_NAME.lower())
     data = {
         "protocolName": utils.PROTOCOL_NAME,
@@ -557,15 +641,13 @@ def writeSpicyFiles(configuration, outRootFolder, crossScopeItems, bitfields, en
     copyTemplateFile(os.path.join("templates", "zeekConfirmationFile.spicy.in"),
                      data,
                      os.path.join(analyzerFolder, zeekConfirmationFile))
-
-    sourceFiles = []
-    sourceFiles.append(zeekConfirmationFile)
+                     
+    return [zeekConfirmationFile]
     
+def _writeConversionFiles(analyzerFolder, configuration):
     normalScope = utils.normalizedScope(utils.CONVERSION_SCOPE, "")
     spicyConversionFile = normalScope.lower() + ".spicy"
     ccConversionFile = normalScope.lower() + ".cc"
-    
-    sourceFiles.append(spicyConversionFile)
     
     data = {
         "scope": normalScope,
@@ -574,7 +656,6 @@ def writeSpicyFiles(configuration, outRootFolder, crossScopeItems, bitfields, en
     copyTemplateFile(os.path.join("templates", "conversion.spicy.in"), data,
                      os.path.join(analyzerFolder, spicyConversionFile))
     
-    sourceFiles.append(ccConversionFile)
     if configuration.conversionFile is not None:
         writeDataToFile(configuration.conversionFile,
                         os.path.join(analyzerFolder, ccConversionFile))
@@ -585,121 +666,162 @@ def writeSpicyFiles(configuration, outRootFolder, crossScopeItems, bitfields, en
         }
         copyTemplateFile(os.path.join("templates", "conversion.cc.in"), data,
                          os.path.join(analyzerFolder, ccConversionFile))
-            
-    transportProtocols = []
+    return [spicyConversionFile, ccConversionFile]
+    
+def determineTransportProtocols(configuration):
+    returnValue = []
 
     if configuration.usesTCP:
-        transportProtocols.append("TCP")
+        returnValue.append("TCP")
 
     if configuration.usesUDP:
-        transportProtocols.append("UDP")
+        returnValue.append("UDP")
+        
+    return returnValue
+    
+def _determineScopeImportLines(normalScope, crossScopeItems):
+    additionalScopes = ""
+    if normalScope in crossScopeItems:
+        for usedScope in crossScopeItems[normalScope]:
+            if usedScope != "":
+                additionalScopes += "import {0};\n".format(usedScope)
+    return additionalScopes
+    
+def _writeSpicyScopeFiles(analyzerFolder, configuration, scope, normalScope, additionalScopeImports, entryPointScope, entryPointName, objects, bitfields, switches, enums):
+    entryPointClass = ""
+    if scope == entryPointScope:
+        entryPointClass = "public type {0}s = unit {{\n{1} : {0}[];\n}};\n\n".format(entryPointName, utils.SINGLE_TAB)
+    
+    objectsString = ""
+    if normalScope in objects:
+        for currentObjectName in objects[normalScope]:
+            # TODO: Other cases where things need to be public?
+            shouldBePublic = currentObjectName == entryPointName
+            objectsString += "{0}\n".format(objects[normalScope][currentObjectName].createSpicyString(configuration.customFieldTypes, bitfields, switches, enums, shouldBePublic))
+    
+    data = {
+        "scope": normalScope,
+        "additionalScopes": additionalScopeImports,
+        "entryPoint": entryPointClass,
+        "objectsString": objectsString
+    }
+    outputFileName = normalScope.lower() + ".spicy"
+    copyTemplateFile(os.path.join("templates", "scope.spicy.in"),
+                     data,
+                     os.path.join(analyzerFolder, outputFileName))
+                     
+    return [outputFileName]
+    
+def _determineProtocolEventsString(normalScope, entryPointScope, entryPointName, transportProtocols, configuration):
+    if normalScope == utils.normalizedScope(utils.DEFAULT_SCOPE, ""):
+        return generateProtocolEvents(normalScope, entryPointScope, entryPointName, transportProtocols, configuration.ports, utils.USES_LAYER_2)
+    else:
+        return ""
+        
+def _determineEntryPointEventString(scope, normalScope, entryPointScope, entryPointName):
+    if scope == entryPointScope:
+        return "export {}::{}s;\n".format(normalScope, entryPointName)
+    else:
+        return ""
+        
+def _determineExportString(scopedObjects, normalScope):
+    exportString = ""
+    for object in scopedObjects:
+        if not scopedObjects[object].logWithParent or scopedObjects[object].logIndependently:
+            exportString += "export {}::{}".format(normalScope, object)
+            if scopedObjects[object].needsSpecificExport:
+                exportString += " "
+                if len(scopedObjects[object].excludedFields) < len(scopedObjects[object].includedFields):
+                    exportString += "without { "
+                    for field in scopedObjects[object].excludedFields:
+                        exportString += field
+                        if field != scopedObjects[object].excludedFields[-1]:
+                            exportString += ", "
+                else:
+                    exportString += "with { "
+                    for field in scopedObjects[object].includedFields:
+                        exportString += field.name
+                        if field != scopedObjects[object].includedFields[-1]:
+                            exportString += ", "
+                exportString += " }"
+            exportString += ";\n"
+    exportString += "\n"
+    
+    return exportString
+    
+def _determineObjectEventsString(scopedObjects, normalScope, bitfields):
+    objectEvents = ""
+    for object in scopedObjects.values():
+        event = object.getEvent(normalScope)
+        if event != []:
+            objectEvents += event.generateEvent(bitfields)
+    return objectEvents
+    
+def _writeSpicyEventFiles(analyzerFolder, configuration, scope, normalScope, entryPointScope, entryPointName, additionalScopeImports, transportProtocols, objects, bitfields):
+    protocolEvents = _determineProtocolEventsString(normalScope, entryPointScope, entryPointName, transportProtocols, configuration)
+    
+    entryPointEvent = _determineEntryPointEventString(scope, normalScope, entryPointScope, entryPointName)
+    
+    scopedObjects = objects[normalScope]
+    
+    exportString = _determineExportString(scopedObjects, normalScope)
+    
+    objectEvents = _determineObjectEventsString(scopedObjects, normalScope, bitfields)
+
+    data = {
+        "scope": normalScope,
+        "additionalScopes": additionalScopeImports,
+        "protocolName": utils.PROTOCOL_NAME,
+        "protocolEvents": protocolEvents,
+        "entryPointEvent": entryPointEvent,
+        "exportString": exportString,
+        "objectEvents": objectEvents
+    }
+    evtFileName = normalScope.lower() + ".evt"
+    copyTemplateFile(os.path.join("templates", "events.evt.in"), data,
+                     os.path.join(analyzerFolder, evtFileName))
+    return [evtFileName]
+    
+def _writeSpicyEnumFiles(analyzerFolder, scope, enums):
+    enumScope = utils.normalizedScope(scope, "enum")
+    if enumScope in enums:
+        enumOutputFileName = enumScope.lower() + ".spicy"
+        contentString = ""
+        for currentEnumName in enums[enumScope]:
+            contentString += "{0}\n".format(enums[enumScope][currentEnumName].createSpicyEnumString())
+        data = {
+            "scope": enumScope,
+            "contents": contentString
+        }
+        copyTemplateFile(os.path.join("templates", "enum.spicy.in"), data,
+                         os.path.join(analyzerFolder, enumOutputFileName))
+        return [enumOutputFileName]
+    else:
+        return []
+    
+def writeSpicyFiles(configuration, outRootFolder, crossScopeItems, bitfields, enums, objects, switches, entryPointScope, entryPointName):
+    # Create basic spicy files
+    analyzerFolder = os.path.join(outRootFolder, "analyzer")
+    os.makedirs(analyzerFolder, exist_ok=True)
+    
+    sourceFiles = _writeSpicyConfirmationFiles(analyzerFolder)
+    
+    sourceFiles += _writeConversionFiles(analyzerFolder, configuration)
+            
+    transportProtocols = determineTransportProtocols(configuration)
             
     # Create all the other files
     for scope in configuration.scopes:
         normalScope = utils.normalizedScope(scope, "")
-        enumScope = utils.normalizedScope(scope, "enum")
-        outputFileName = normalScope.lower() + ".spicy"
-        evtFileName = normalScope.lower() + ".evt"
-        sourceFiles.append(outputFileName)
+        additionalScopeImports = _determineScopeImportLines(normalScope, crossScopeItems)
+        
         # Figure out the scope file
-        additionalScopes = ""
-        if normalScope in crossScopeItems:
-            for usedScope in crossScopeItems[normalScope]:
-                if usedScope != "":
-                    additionalScopes += "import {0};\n".format(usedScope)
-            additionalScopes += "\n"
-        
-        entryPointClass = ""
-        if scope == entryPointScope:
-            entryPointClass = "public type {0}s = unit {{\n{1} : {0}[];\n}};\n\n".format(entryPointName, utils.SINGLE_TAB)
-        
-        objectsString = ""
-        if normalScope in objects:
-            for currentObjectName in objects[normalScope]:
-                # TODO: Other cases where things need to be public?
-                shouldBePublic = currentObjectName == entryPointName
-                objectsString += "{0}\n".format(objects[normalScope][currentObjectName].createSpicyString(configuration.customFieldTypes, bitfields, switches, enums, shouldBePublic))
-        
-        data = {
-            "scope": normalScope,
-            "additionalScopes": additionalScopes,
-            "entryPoint": entryPointClass,
-            "objectsString": objectsString
-        }
-        copyTemplateFile(os.path.join("templates", "scope.spicy.in"),
-                         data,
-                         os.path.join(analyzerFolder, outputFileName))
+        sourceFiles += _writeSpicyScopeFiles(analyzerFolder, configuration, scope, normalScope, additionalScopeImports, entryPointScope, entryPointName, objects, bitfields, switches, enums)
         
         # Figure out the event file
-        sourceFiles.append(evtFileName)
-        additionalScopes = ""
-        if normalScope in crossScopeItems:
-            for usedScope in crossScopeItems[normalScope]:
-                if usedScope != "":
-                    additionalScopes += "import {0};\n".format(usedScope)
-        
-        protocolEvents = ""
-        if normalScope == utils.normalizedScope(utils.DEFAULT_SCOPE, ""):
-            protocolEvents = generateProtocolEvents(normalScope, entryPointScope, entryPointName, transportProtocols, configuration.ports, utils.USES_LAYER_2)
-        
-        entryPointEvent = ""
-        if scope == entryPointScope:
-            entryPointEvent = "export {}::{}s;\n".format(normalScope, entryPointName)
-            
-        scopedObjects = objects[normalScope]
-        exportString = ""
-        for object in scopedObjects:
-            if not scopedObjects[object].logWithParent or scopedObjects[object].logIndependently:
-                exportString += "export {}::{}".format(normalScope, object)
-                if scopedObjects[object].needsSpecificExport:
-                    exportString += " "
-                    if len(scopedObjects[object].excludedFields) < len(scopedObjects[object].includedFields):
-                        exportString += "without { "
-                        for field in scopedObjects[object].excludedFields:
-                            exportString += field
-                            if field != scopedObjects[object].excludedFields[-1]:
-                                exportString += ", "
-                    else:
-                        exportString += "with { "
-                        for field in scopedObjects[object].includedFields:
-                            exportString += field.name
-                            if field != scopedObjects[object].includedFields[-1]:
-                                exportString += ", "
-                    exportString += " }"
-                exportString += ";\n"
-        exportString += "\n"
-        
-        objectEvents = ""
-        for object in scopedObjects.values():
-            event = object.getEvent(normalScope)
-            if event != []:
-                objectEvents += event.generateEvent(bitfields)
+        sourceFiles += _writeSpicyEventFiles(analyzerFolder, configuration, scope, normalScope, entryPointScope, entryPointName, additionalScopeImports, transportProtocols, objects, bitfields)
 
-        data = {
-            "scope": normalScope,
-            "additionalScopes": additionalScopes,
-            "protocolName": utils.PROTOCOL_NAME,
-            "protocolEvents": protocolEvents,
-            "entryPointEvent": entryPointEvent,
-            "exportString": exportString,
-            "objectEvents": objectEvents
-        }
-        
-        copyTemplateFile(os.path.join("templates", "events.evt.in"), data,
-                         os.path.join(analyzerFolder, evtFileName))
-
-        if enumScope in enums:
-            enumOutputFileName = enumScope.lower() + ".spicy"
-            sourceFiles.append(enumOutputFileName)
-            contentString = ""
-            for currentEnumName in enums[enumScope]:
-                contentString += "{0}\n".format(enums[enumScope][currentEnumName].createSpicyEnumString())
-            data = {
-                "scope": enumScope,
-                "contents": contentString
-            }
-            copyTemplateFile(os.path.join("templates", "enum.spicy.in"), data,
-                             os.path.join(analyzerFolder, enumOutputFileName))
+        sourceFiles += _writeSpicyEnumFiles(analyzerFolder, scope, enums)
                 
     return (analyzerFolder, sourceFiles)
         

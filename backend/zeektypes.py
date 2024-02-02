@@ -4,6 +4,7 @@ from string import Template
 from math import ceil 
 import re
 import utils
+import generation_utils
 
 TYPE_TO_EMPTY  = {
     "string" : "",
@@ -35,66 +36,87 @@ class ZeekMain:
             if record.name == currentRecord.name:
                 return
         self.records.append(record)
-
-    def generateMainFile(self, usesLayer2, ethernetProtocolNumber=0):
-        fileString = """
-## main.zeek
-##
-## ICSNPP-{}
-##
-## Zeek script type/record definitions describing the information
-## that will be written to the log files.
-##
-## Author:   Melanie Pierce
-## Contact:  melanie.pierce@inl.gov
-##
-## Copyright (c) 2024 Battelle Energy Alliance, LLC.  All rights reserved.\n
-""".format(utils.PROTOCOL_NAME)
-        fileString += "module {};\n\n".format(utils.PROTOCOL_NAME)
-        fileString += "export {\n"
-        logStreamString = ""
-        logNamePadding = " " * 28
-        if len(self.records) > 1:
-            fileString += "{}redef enum Log::ID += {{\n".format(utils.SINGLE_TAB)
+        
+    def _generateLogStreamIndividualString(self, record, indent, isSingle):
+        returnString = ""
+        pathName = record.name.lower()
+        if not isSingle:
+            pathName = pathName.replace("_log", "")
+        recordLogName = "LOG_{}".format(record.name.upper())
+        returnString += "{}Log::create_stream({}::{},\n".format(indent, utils.PROTOCOL_NAME, recordLogName)
+        returnString += "{}[$columns={}{},\n".format(indent, record.scope, record.name)
+        returnString += "{}$ev=log_{},\n".format(indent, record.name.lower())
+        returnString += "{}$path=\"{}_{}\"]);\n".format(indent, utils.PROTOCOL_NAME.lower(), pathName)
+        return returnString
+        
+    def _generateLogStreamString(self, records):
+        returnString = ""
+        if len(records) > 1:
             for record in self.records:
+                returnString += self._generateLogStreamIndividualString(record, utils.SINGLE_TAB, False)
+        else:            
+            returnString += self._generateLogStreamIndividualString(self.records[0], " " * 22, True)
+        return returnString
+        
+    def _generateFileString(self, records):
+        returnString = utils.SINGLE_TAB + "redef enum Log::ID += {"
+        if len(records) > 1:
+            returnString += "\n"
+            for record in records:
                 recordLogName = "LOG_{}".format(record.name.upper())
+                returnString += "{}{}".format(" " * 28, recordLogName)
                 if record != self.records[len(self.records) - 1]:
-                    fileString += "{}{},\n".format(logNamePadding, recordLogName)
-                else:
-                    fileString += "{}{}\n".format(logNamePadding, recordLogName)
-                logStreamString += "{}Log::create_stream({}::{},\n".format(utils.SINGLE_TAB, utils.PROTOCOL_NAME, recordLogName)
-                logStreamString += "{}[$columns={}{},\n".format(utils.SINGLE_TAB, record.scope, record.name)
-                logStreamString += "{}$ev=log_{},\n".format(utils.SINGLE_TAB, record.name.lower())
-                logStreamString += "{}$path=\"{}_{}\"]);\n".format(utils.SINGLE_TAB, utils.PROTOCOL_NAME.lower(), record.name.lower().replace("_log", ""))
-            fileString += "{}}};\n".format((" " * 27))
-        else: 
-            logFunctionIndent = " " * 22
-            recordLogName = "LOG_{}".format(self.records[0].name.upper())
-            fileString += "{}redef enum Log::ID += {{ {} }};\n\n".format(utils.SINGLE_TAB, recordLogName)
-            logStreamString += "{}Log::create_stream({}::{},\n".format(utils.SINGLE_TAB, utils.PROTOCOL_NAME, recordLogName)
-            logStreamString += "{}[$columns={}{},\n".format(logFunctionIndent, self.records[0].scope, self.records[0].name)
-            logStreamString += "{}$ev=log_{},\n".format(logFunctionIndent, self.records[0].name.lower())
-            logStreamString += "{}$path=\"{}_{}\"]);\n".format(logFunctionIndent, utils.PROTOCOL_NAME.lower(), self.records[0].name.lower())
-           
-        for record in self.records:
+                    returnString += ","
+                returnString += "\n"
+            returnString += (" " * 27)
+        else:
+            recordLogName = "LOG_{}".format(records[0].name.upper())
+            fileString += " {} ".format(recordLogName)
+        returnString += "};\n\n"
+        return returnString
+        
+    def _generateGlobals(self, records):
+        returnString = ""
+        for record in records:
             recordLogEventName = "log_{}".format(record.name.lower())
-            fileString += "{}global {}: event(rec: {}{});\n".format(utils.SINGLE_TAB, recordLogEventName, record.scope, record.name)
-        for record in self.records:
+            returnString += "{}global {}: event(rec: {}{});\n".format(utils.SINGLE_TAB, recordLogEventName, record.scope, record.name)
+        return returnString
+        
+    def _generateEmits(self, records):
+        returnString = ""
+        for record in records:
             recordLogEventName = "log_{}".format(record.name.lower())
+            returnString += "{}global emit_{}_{}: function(".format(utils.SINGLE_TAB, utils.PROTOCOL_NAME.lower(), record.name.lower())
             if utils.USES_LAYER_2:
                 if record.scope != "":
-                    fileString += "{}global emit_{}_{}: function({}_record: {}::{});\n".format(utils.SINGLE_TAB, utils.PROTOCOL_NAME.lower(), record.name.lower(), record.scope, record.name.lower())
+                    # TODO: Figure out what is missing here...
+                    returnString += "{}_record: {}::{}".format(record.name.lower(), record.scope, record.name)
                 else:
-                    fileString += "{}global emit_{}_{}: function({}_record: {});\n".format(utils.SINGLE_TAB, utils.PROTOCOL_NAME.lower(), record.name.lower(), record.name.lower(), record.name)
+                    returnString += "{}_record: {}".format(record.name.lower(), record.name)
             else:
-                fileString += "{}global emit_{}_{}: function(c: connection);\n".format(utils.SINGLE_TAB, utils.PROTOCOL_NAME.lower(), record.name.lower())
+                returnString += "c: connection"
+            returnString += ");\n"
+        return returnString
+        
+    def _generateConnections(self, records):
+        returnString = ""
+        returnString += "# redefine connection record to contain one of each of the {} records\n".format(utils.PROTOCOL_NAME.lower())
+        returnString += "redef record connection += {\n"
+        returnString += "{}{}_proto: string &optional;\n".format(utils.SINGLE_TAB, utils.PROTOCOL_NAME.lower())
+        for record in records:
+            returnString += "{}{}_{}: {}{} &optional;\n".format(utils.SINGLE_TAB, utils.PROTOCOL_NAME.lower(), record.name.lower(), record.scope, record.name)
+        returnString += "};\n\n"
+        return returnString
+
+    def generateMainFile(self, usesLayer2, ethernetProtocolNumber=0):
+        fileString = "export {\n"
+        fileString += self._generateFileString(self.records)
+        fileString += self._generateGlobals(self.records)
+        fileString += self._generateEmits(self.records)
         fileString += "\n}\n\n"
-        fileString += "# redefine connection record to contain one of each of the {} records\n".format(utils.PROTOCOL_NAME.lower())
-        fileString += "redef record connection += {\n"
-        fileString += "{}{}_proto: string &optional;\n".format(utils.SINGLE_TAB, utils.PROTOCOL_NAME.lower())
-        for record in self.records:
-            fileString += "{}{}_{}: {}{} &optional;\n".format(utils.SINGLE_TAB, utils.PROTOCOL_NAME.lower(), record.name.lower(), record.scope, record.name)
-        fileString += "};\n\n"
+        
+        fileString += self._generateConnections(self.records)
+        
         # TODO add port-based detection stuff
         fileString += "#Put protocol detection information here\n"
         fileString += "event zeek_init() &priority=5 {\n"
@@ -105,7 +127,7 @@ class ZeekMain:
             fileString += "{0}Reporter::error(\"cannot register Spicy analyzer\");".format(utils.DOUBLE_TAB)
             fileString += "\n"
         fileString += "{}# initialize logging streams for all {} logs\n".format(utils.SINGLE_TAB, utils.PROTOCOL_NAME.lower())
-        fileString += logStreamString
+        fileString += self._generateLogStreamString(self.records)
         fileString += "}\n"
         return fileString
     
