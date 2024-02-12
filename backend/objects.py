@@ -187,152 +187,190 @@ class Object:
             event.scope = moduleName
             event.name = self.name
         return event
-
-    def makeEventBackend(self, moduleName, zeekStructureName, allEnums, allBitfields, allObjects,  allSwitches, scopes, includeNonFields = True, logObjectVariableName = "", itemPrefex = "", startingTabSize = 1, specificExportOverride=False):
-        #pull this into a function
-        convertingFunctionString = ""
-        localVariableName = logObjectVariableName
-        tabSize = startingTabSize
+        
+    def _determineChildOverride(self, specificExportOverride):
         if specificExportOverride:
             childOverride = True
         else:
             childOverride = not self.needsSpecificExport
-        if itemPrefex == "":
+        return childOverride
+        
+    def _determineProcessingName(self, itemPrefix, specificExportOverride):
+        if itemPrefix == "":
             if self.needsSpecificExport and not specificExportOverride:
-                processingName = ""   
-                # processingName = self.name.lower() + "$"
+                processingName = ""
             else:
                 processingName = self.name.lower() + "$"
         else:
-            processingName = itemPrefex + "$"
-        if includeNonFields and not utils.USES_LAYER_2:
-            event = self.getEvent(moduleName)        
-            localVariableName = "info_{}".format(zeekStructureName.lower())
-            convertingFunctionString += event.getEventFunctionName(allBitfields)
+            processingName = itemPrefix + "$"
+        return processingName
+        
+    def _adjustForNonFields(self, moduleName, zeekStructureName, allBitfields, tabSize):
+        event = self.getEvent(moduleName)
+        localVariableName = "info_{}".format(zeekStructureName.lower())
+        convertingFunctionString = event.getEventFunctionName(allBitfields)
+        if not utils.USES_LAYER_2:
             convertingFunctionString += "{}hook set_session_{}(c);\n\n".format(utils.getTabString(tabSize), zeekStructureName.lower())
             convertingFunctionString += "{}local {} = c${}_{};\n\n".format(utils.getTabString(tabSize), localVariableName, utils.PROTOCOL_NAME.lower(), zeekStructureName.lower())
-        elif includeNonFields and utils.USES_LAYER_2:
-            event = self.getEvent(moduleName)
-            convertingFunctionString += event.getEventFunctionName(allBitfields)     
-            localVariableName = "info_{}".format(zeekStructureName.lower())
+        else: # utils.USES_LAYER_2:
             convertingFunctionString += "{}local {} = {}(\n".format(utils.getTabString(tabSize), localVariableName, zeekStructureName)
-            convertingFunctionString += "{}$ts=network_time(),\n".format(utils.getTabString(tabSize +1))
+            convertingFunctionString += "{}$ts=network_time(),\n".format(utils.getTabString(tabSize + 1))
             convertingFunctionString += "{}$proto=\"{}\"\n{});\n".format(utils.getTabString(tabSize + 1), utils.PROTOCOL_NAME.lower(), utils.getTabString(tabSize))
+        return (localVariableName, convertingFunctionString)
+        
+    def _finishForNonFields(self, localVariableName, tabSize, zeekStructureName):
+        argument = "c"
+        if utils.USES_LAYER_2:
+            argument = localVariableName
+        convertingFunctionString = "{}{}::emit_{}_{}({});\n".format(utils.getTabString(tabSize), utils.PROTOCOL_NAME, utils.PROTOCOL_NAME.lower(), zeekStructureName.lower(), argument)
+        convertingFunctionString += "}\n"
+        return convertingFunctionString
+        
+    def _getLinkIDConvertingFunctions(self, tabSize, localVariableName, processingName):
+        convertingFunctionString = ""
+        for linkId in self.linkIds:
+            convertingFunctionString += "{}{}${} = {}{};\n".format(utils.getTabString(tabSize), localVariableName, utils.commandNameToConst(linkId.name).lower(), processingName, linkId.name)
+        return convertingFunctionString
+        
+    def _updateOnConditionals(self, startingTabSize, field, specificExportOverride, processingName):
+        tabSize = startingTabSize
+        convertingFunctionString = ""
+        if len(field.conditional) > 0:
+            if self.needsSpecificExport and not specificExportOverride:
+                pass
+            else:
+                convertingFunctionString += "{}if ({}?${}){{\n".format(utils.getTabString(tabSize), processingName[:-1], field.name)
+                tabSize = startingTabSize + 1
+        return (tabSize, convertingFunctionString)
+        
+    def _finishOnConditionals(self, field, specificExportOverride, tabSize):
+        if len(field.conditional) > 0 and (not self.needsSpecificExport or specificExportOverride):
+            return "{}}}\n".format(utils.getTabString(tabSize - 1))
+        return ""
+        
+    def _makeEventBackendForBits(self, field, scopes, allBitfields, allEnums, specificExportOverride, localVariableName, processingName, tabSize):
+        referenceType = field.referenceType
+        referencedBitfield = None
+        for scope in scopes: 
+            if referenceType in allBitfields[utils.normalizedScope(scope, "bitfield")]:
+                referencedBitfield = allBitfields[utils.normalizedScope(scope, "bitfield")][referenceType]
+                break
+        convertingFunctionString = ""
+        if referencedBitfield != None:
+            for bitfieldItem in referencedBitfield.fields:
+                argument = bitfieldItem.name
+                if not self.needsSpecificExport or specificExportOverride:
+                    argument = "{}{}${}".format(processingName, field.name, argument)
+                convertingFunctionString += "{}{}${}_{} = ".format(utils.getTabString(tabSize), localVariableName, field.zeekName, utils.commandNameToConst(bitfieldItem.name).lower())
+                if bitfieldItem.type == "enum":
+                    for scope in scopes: 
+                        if bitfieldItem.referenceType in allEnums[utils.normalizedScope(scope, "enum")]:
+                            enumScope = utils.normalizedScope(scope, "enum")
+                            break
+                    convertingFunctionString += "{}::{}[{}]".format(enumScope, utils.commandNameToConst(bitfieldItem.referenceType).upper(), argument)
+                else:
+                    convertingFunctionString += argument
+                convertingFunctionString += ";\n"
+        return convertingFunctionString
+        
+    def _makeEventBackendForEnum(self, field, scopes, allEnums, localVariableName, processingName, tabSize):
+        for scope in scopes: 
+            if field.referenceType in allEnums[utils.normalizedScope(scope, "enum")]:
+                enumScope = utils.normalizedScope(scope, "enum")
+                break
+        return "{}{}${} = {}::{}[{}{}];\n".format(utils.getTabString(tabSize), localVariableName, field.zeekName, enumScope, utils.commandNameToConst(field.referenceType).upper(), processingName, field.name)
+        
+    def _makeEventBackendForObject(self, field, processingName, moduleName, allEnums, allBitfields, allObjects, allSwitches, scopes, localVariableName, startingTabSize, childOverride):
+        referencedObject = None
+        for scope in scopes:
+            if field.referenceType in allObjects[utils.normalizedScope(scope, "object")]:
+                referencedObject = allObjects[utils.normalizedScope(scope, "object")][field.referenceType]
+                break
+        if referencedObject != None:
+            objectZeekStructureName = processingName + field.name
+            return referencedObject.makeEventBackend(moduleName, objectZeekStructureName, allEnums, allBitfields, allObjects, allSwitches, scopes, False, localVariableName, objectZeekStructureName, startingTabSize, childOverride)
+        return ""
+        
+    def _makeEventBackendForSwitchAction(self, field, action, processingName, moduleName, allEnums, allBitfields, allObjects, allSwitches, scopes, localVariableName, startingTabSize, childOverride, tabSize):
+        convertingFunctionString = ""
+        if action.type == "object":
+            objectName = action.referenceType
+            for scope in scopes: 
+                if objectName in allObjects[utils.normalizedScope(scope, "")]:
+                    object = allObjects[utils.normalizedScope(scope, "")][objectName]
+                    argument = action.name
+                    if not object.needsSpecificExport:
+                        argument = "{}?${}".format(processingName[:-1], argument)
+                    convertingFunctionString += "{}if ({}){{\n".format(utils.getTabString(tabSize), argument)
+                    objectZeekStructureName = processingName + action.name
+                    convertingFunctionString += object.makeEventBackend(moduleName, objectZeekStructureName, allEnums, allBitfields, allObjects, allSwitches, scopes, False, localVariableName, objectZeekStructureName, startingTabSize + 1, childOverride)
+                    convertingFunctionString += "{}}}\n".format(utils.getTabString(tabSize))
+        else:
+            argument = action.name
+            # TODO: Figure this out
+            # Huh???? Where is object defined?
+            #if not object.needsSpecificExport:
+            #    argument = "{}?${}".format(processingName[:-1], argument)
+            # Until we can get this figure out...
+            argument = "{}?${}".format(processingName[:-1], argument)
+            
+            convertingFunctionString += "{}if ({}){{\n".format(utils.getTabString(tabSize), argument)
+            convertingFunctionString += "{}{}${} = {}{};\n".format(utils.getTabString(tabSize + 1), localVariableName, field.zeekName, processingName, action.name)
+            convertingFunctionString += "{}}}\n".format(utils.getTabString(tabSize))
+        return convertingFunctionString
+        
+    def _makeEventBackendForSwitchOptions(self, field, switch, processingName, moduleName, allEnums, allBitfields, allObjects, allSwitches, scopes, localVariableName, startingTabSize, childOverride, tabSize):
+        convertingFunctionString = ""
+        for item in switch.options:
+            convertingFunctionString += self._makeEventBackendForSwitchAction(field, item.action, processingName, moduleName, allEnums, allBitfields, allObjects, allSwitches, scopes, localVariableName, startingTabSize, childOverride, tabSize)
+        return convertingFunctionString
+        
+    def _makeEventBackendForSwitchDefault(self, field, switch, processingName, moduleName, allEnums, allBitfields, allObjects, allSwitches, scopes, localVariableName, startingTabSize, childOverride, tabSize):
+        return self._makeEventBackendForSwitchAction(field, switch.default, processingName, moduleName, allEnums, allBitfields, allObjects, allSwitches, scopes, localVariableName, startingTabSize, childOverride, tabSize)
+        
+    def _makeEventBackendForSwitch(self, field, processingName, moduleName, allEnums, allBitfields, allObjects, allSwitches, scopes, localVariableName, startingTabSize, childOverride, tabSize):
+        for switchScope in scopes: 
+            if field.referenceType in allSwitches[utils.normalizedScope(switchScope, "")]:
+                switch = allSwitches[utils.normalizedScope(switchScope, "")][field.referenceType]
+                break
+        switchType = ""            
+        if switch != None:
+            switchType = json_processing.getSwitchType(field.referenceType, field, switchScope, scopes, allObjects, allSwitches)
+        if switchType != "contained":
+            return ""
+
+        convertingFunctionString = self._makeEventBackendForSwitchOptions(field, switch, processingName, moduleName, allEnums, allBitfields, allObjects, allSwitches, scopes, localVariableName, startingTabSize, childOverride, tabSize)
+        
+        if switch.default != None:
+            convertingFunctionString += self._makeEventBackendForSwitchDefault(field, switch, processingName, moduleName, allEnums, allBitfields, allObjects, allSwitches, scopes, localVariableName, startingTabSize, childOverride, tabSize)
+        return convertingFunctionString
+                
+    def makeEventBackend(self, moduleName, zeekStructureName, allEnums, allBitfields, allObjects, allSwitches, scopes, includeNonFields = True, logObjectVariableName = "", itemPrefix = "", startingTabSize = 1, specificExportOverride=False):
+        convertingFunctionString = ""
+        localVariableName = logObjectVariableName
+        tabSize = startingTabSize
+        childOverride = self._determineChildOverride(specificExportOverride)
+        processingName = self._determineProcessingName(itemPrefix, specificExportOverride)
+        if includeNonFields:
+            localVariableName, convertingFunctionString = self._adjustForNonFields(moduleName, zeekStructureName, allBitfields, tabSize)
         if self.linkIds != []:
-            for linkId in self.linkIds:
-                convertingFunctionString += "{}{}${} = {}{};\n".format(utils.getTabString(tabSize), localVariableName, utils.commandNameToConst(linkId.name).lower(), processingName, linkId.name)
+            convertingFunctionString += self._getLinkIDConvertingFunctions(tabSize, localVariableName, processingName)
         for field in self.fields:
-            tabSize = startingTabSize
-            if len(field.conditional) > 0:
-                if self.needsSpecificExport and not specificExportOverride:
-                    pass
-                else:
-                    convertingFunctionString += "{}if ({}?${}){{\n".format(utils.getTabString(tabSize), processingName[:-1], field.name)
-                    tabSize = startingTabSize + 1
+            tabSize, temp = self._updateOnConditionals(startingTabSize, field, specificExportOverride, processingName)
+            convertingFunctionString += temp
             if field.type == "bits":
-                referenceType = field.referenceType
-                referencedBitfield = None
-                for scope in scopes: 
-                    if referenceType in allBitfields[utils.normalizedScope(scope, "bitfield")]:
-                        referencedBitfield = allBitfields[utils.normalizedScope(scope, "bitfield")][referenceType]
-                        break
-                if referencedBitfield != None:
-                    for bitfieldItem in referencedBitfield.fields:
-                            if bitfieldItem.type == "enum":
-                                for scope in scopes: 
-                                    if bitfieldItem.referenceType in allEnums[utils.normalizedScope(scope, "enum")]:
-                                        enumScope = utils.normalizedScope(scope, "enum")
-                                        break
-                                if self.needsSpecificExport and not specificExportOverride:
-                                    convertingFunctionString += "{}{}${}_{} = {}::{}[{}];\n".format(utils.getTabString(tabSize), localVariableName, field.zeekName, utils.commandNameToConst(bitfieldItem.name).lower(), enumScope, utils.commandNameToConst(bitfieldItem.referenceType).upper(), bitfieldItem.name)
-
-                                else:
-                                    convertingFunctionString += "{}{}${}_{} = {}::{}[{}{}${}];\n".format(utils.getTabString(tabSize), localVariableName, field.zeekName, utils.commandNameToConst(bitfieldItem.name).lower(), enumScope, utils.commandNameToConst(bitfieldItem.referenceType).upper(), processingName, field.name, bitfieldItem.name)
-                            else:
-                                if self.needsSpecificExport and not specificExportOverride:
-                                    convertingFunctionString += "{}{}${}_{} = {};\n".format(utils.getTabString(tabSize), localVariableName, field.zeekName, utils.commandNameToConst(bitfieldItem.name).lower(), bitfieldItem.name)
-
-                                else:                                        
-                                    convertingFunctionString += "{}{}${}_{} = {}{}${};\n".format(utils.getTabString(tabSize), localVariableName, field.zeekName, utils.commandNameToConst(bitfieldItem.name).lower(), processingName, field.name, bitfieldItem.name)
+                convertingFunctionString += self._makeEventBackendForBits(field, scopes, allBitfields, allEnums, specificExportOverride, localVariableName, processingName, tabSize)
             elif field.type == "enum":
-                for scope in scopes: 
-                    if field.referenceType in allEnums[utils.normalizedScope(scope, "enum")]:
-                        enumScope = utils.normalizedScope(scope, "enum")
-                        break
-                if self.needsSpecificExport and not specificExportOverride:
-                    convertingFunctionString += "{}{}${} = {}::{}[{}{}];\n".format(utils.getTabString(tabSize), localVariableName, field.zeekName, enumScope, utils.commandNameToConst(field.referenceType).upper(), processingName, field.name)
-                else:
-                    convertingFunctionString += "{}{}${} = {}::{}[{}{}];\n".format(utils.getTabString(tabSize), localVariableName, field.zeekName, enumScope, utils.commandNameToConst(field.referenceType).upper(), processingName, field.name)
-
+                convertingFunctionString += self._makeEventBackendForEnum(field, scopes, allEnums, localVariableName, processingName, tabSize)
             elif field.type == "object":
-                referencedObject = None
-                for scope in scopes:
-                    if field.referenceType in allObjects[utils.normalizedScope(scope, "object")]:
-                            referencedObject = allObjects[utils.normalizedScope(scope, "object")][field.referenceType]
-                            break
-                if referencedObject != None:
-                    objectZeekStructureName = processingName + field.name
-                    convertingFunctionString += referencedObject.makeEventBackend(moduleName, objectZeekStructureName, allEnums, allBitfields, allObjects, allSwitches, scopes, False, localVariableName, objectZeekStructureName, startingTabSize, childOverride)   
-
+                convertingFunctionString += self._makeEventBackendForObject(field, processingName, moduleName, allEnums, allBitfields, allObjects, allSwitches, scopes, localVariableName, startingTabSize, childOverride)
             elif field.type == "switch":
-                for switchScope in scopes: 
-                        if field.referenceType in allSwitches[utils.normalizedScope(switchScope, "")]:
-                            switch = allSwitches[utils.normalizedScope(switchScope, "")][field.referenceType]
-                            break
-                switchType = ""            
-                if switch != None:
-                    switchType = json_processing.getSwitchType(field.referenceType, field, switchScope, scopes, allObjects, allSwitches)
-                if switchType == "contained":
-                    for item in switch.options:
-                        if item.action.type == "object":
-                            objectName = item.action.referenceType
-                            for scope in scopes:
-                                if objectName in allObjects[utils.normalizedScope(scope, "")]:
-                                    object = allObjects[utils.normalizedScope(scope, "")][objectName]
-                                    if object.needsSpecificExport:
-                                        convertingFunctionString += "{}if ({}){{\n".format(utils.getTabString(tabSize),item.action.name)
-                                    else:
-                                        convertingFunctionString += "{}if ({}?${}){{\n".format(utils.getTabString(tabSize), processingName[:-1], item.action.name)
-                                    objectZeekStructureName = processingName +  item.action.name
-                                    convertingFunctionString += object.makeEventBackend(moduleName, objectZeekStructureName, allEnums, allBitfields, allObjects, allSwitches, scopes, False, localVariableName, objectZeekStructureName, startingTabSize + 1, childOverride)
-                                    convertingFunctionString += "{}}}\n".format(utils.getTabString(tabSize))
-                        else:
-                            if object.needsSpecificExport:
-                                convertingFunctionString += "{}if ({}){{\n".format(utils.getTabString(tabSize),item.action.name)
-                            else:
-                                convertingFunctionString += "{}if ({}?${}){{\n".format(utils.getTabString(tabSize), processingName[:-1], item.action.name)
-                            convertingFunctionString += "{}{}${} = {}{};\n".format(utils.getTabString(tabSize + 1), localVariableName, field.zeekName, processingName, item.action.name)
-                            convertingFunctionString += "{}}}\n".format(utils.getTabString(tabSize))
-                    if switch.default != None:
-                        if switch.default.type == "object":
-                            objectName = switch.default.referenceType
-                            for scope in scopes: 
-                                if objectName in allObjects[utils.normalizedScope(scope, "")]:
-                                    object = allObjects[utils.normalizedScope(scope, "")][objectName]
-                                    if object.needsSpecificExport:
-                                        convertingFunctionString += "{}if ({}){{\n".format(utils.getTabString(tabSize),switch.default.name)
-                                    else:
-                                        convertingFunctionString += "{}if ({}?${}){{\n".format(utils.getTabString(tabSize), processingName[:-1], switch.default.name)
-                                    objectZeekStructureName = processingName + switch.default.name
-                                    convertingFunctionString += object.makeEventBackend(moduleName, objectZeekStructureName, allEnums, allBitfields, allObjects, allSwitches, scopes, False, localVariableName, objectZeekStructureName, startingTabSize + 1, childOverride)
-                                    convertingFunctionString += "{}}}\n".format(utils.getTabString(tabSize))
-                        else:
-                            if object.needsSpecificExport:
-                                convertingFunctionString += "{}if ({}){{\n".format(utils.getTabString(tabSize),item.action.name)
-                            else:
-                                convertingFunctionString += "{}if ({}?${}){{\n".format(utils.getTabString(tabSize), processingName[:-1], item.action.name)
-                            convertingFunctionString += "{}{}${} = {}{};\n".format(utils.getTabString(tabSize + 1), localVariableName, field.zeekName, processingName, item.action.name)
-                            convertingFunctionString += "{}}}\n".format(utils.getTabString(tabSize))
+                convertingFunctionString += self._makeEventBackendForSwitch(field, processingName, moduleName, allEnums, allBitfields, allObjects, allSwitches, scopes, localVariableName, startingTabSize, childOverride, tabSize)
             elif field.type == "list":
                 pass
             else: 
                 convertingFunctionString += "{}{}${} = {}{};\n".format(utils.getTabString(tabSize), localVariableName, field.zeekName, processingName, field.name)
-            if len(field.conditional) > 0 and (not self.needsSpecificExport or specificExportOverride):
-                convertingFunctionString += "{}}}\n".format(utils.getTabString(tabSize - 1))
-        if includeNonFields and not utils.USES_LAYER_2:
-            convertingFunctionString += "{}{}::emit_{}_{}(c);\n".format(utils.getTabString(tabSize), utils.PROTOCOL_NAME, utils.PROTOCOL_NAME.lower(), zeekStructureName.lower())
-            convertingFunctionString += "}\n"
-        elif includeNonFields and utils.USES_LAYER_2:
-            convertingFunctionString += "{}{}::emit_{}_{}({});\n".format(utils.getTabString(tabSize), utils.PROTOCOL_NAME, utils.PROTOCOL_NAME.lower(), zeekStructureName.lower(), localVariableName)
-            convertingFunctionString += "}\n" 
+            convertingFunctionString += self._finishOnConditionals(field, specificExportOverride, tabSize)
+        if includeNonFields:
+            convertingFunctionString += self._finishForNonFields(localVariableName, tabSize, zeekStructureName)
         return convertingFunctionString

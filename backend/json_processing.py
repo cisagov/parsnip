@@ -61,7 +61,39 @@ def passThroughLink(switchName, objectField, scopes, allObjects, allSwitches, li
                     switch.addAdditionalDependsOn(newAdditionalDependency)
                     object.addDependency(newAdditionalDependency)
                     item.action.addInput(newInput)
-
+                    
+def _getSwitchJson(spicyFieldName):
+    objectDependencyJson =  {
+        "name": "parentLinkId",
+        "type": "string",
+        "size": 8
+    }
+    switchDependencyJson =  {
+        "name": spicyFieldName,
+        "type": "string",
+        "size": 8
+    }
+    
+    return (objectDependencyJson, switchDependencyJson)
+    
+def _processNonUsageScope(switch, object, item, scope, objectField):
+    spicyFieldName = switch.dependsOn.name[0].lower() + switch.dependsOn.name[1:] + "LinkID"
+    linkObjectField = objects.Link(spicyFieldName, "parentLinkId", True)
+    fieldInput = inputs.Input("self." + spicyFieldName)
+    objectField.addInput(fieldInput)
+    objectDependencyJson, switchDependencyJson = _getSwitchJson(spicyFieldName)
+    newAdditionaObjectlDependency = createDependencyFromJSON(objectDependencyJson)
+    object.addDependency(newAdditionaObjectlDependency)
+    newAdditionalSwitchDependency = createDependencyFromJSON(switchDependencyJson)
+    switch.addAdditionalDependsOn(newAdditionalSwitchDependency)
+    newInput = inputs.Input(spicyFieldName)
+    item.action.addInput(newInput)
+    if scope not in utils.scopesHaveCrossScopeLinks:
+        utils.scopesHaveCrossScopeLinks[scope] = []
+    if spicyFieldName not in utils.scopesHaveCrossScopeLinks:
+        utils.scopesHaveCrossScopeLinks[scope].append(spicyFieldName)
+        
+    return linkObjectField
 
 def getSwitchType(switchName, objectField, switchUsageScope, scopes, allObjects, allSwitches):
     for scope in scopes: 
@@ -81,31 +113,7 @@ def getSwitchType(switchName, objectField, switchUsageScope, scopes, allObjects,
                     if scope != switchUsageScope:
                         linkRequired = True
                         isSkippedClass = False
-                        # link_id_name = utils.commandNameToConst(switch.dependsOn.name).lower() + "_link_id"
-                        spicyFieldName = switch.dependsOn.name[0].lower() + switch.dependsOn.name[1:] + "LinkID"
-                        linkObjectField = objects.Link(spicyFieldName, "parentLinkId", True)
-                        newInput = inputs.Input(spicyFieldName)
-                        fieldInput = inputs.Input("self." + spicyFieldName)
-                        objectField.addInput(fieldInput)
-                        objectDependencyJson =  {
-                            "name": "parentLinkId",
-                            "type": "string",
-                            "size": 8
-                        }
-                        switchDependencyJson =  {
-                            "name": spicyFieldName,
-                            "type": "string",
-                            "size": 8
-                        }
-                        newAdditionaObjectlDependency = createDependencyFromJSON(objectDependencyJson)
-                        newAdditionalSwitchDependency = createDependencyFromJSON(switchDependencyJson)
-                        switch.addAdditionalDependsOn(newAdditionalSwitchDependency)
-                        object.addDependency(newAdditionaObjectlDependency)
-                        item.action.addInput(newInput)
-                        if scope not in utils.scopesHaveCrossScopeLinks:
-                            utils.scopesHaveCrossScopeLinks[scope] = []
-                        if spicyFieldName not in utils.scopesHaveCrossScopeLinks:
-                            utils.scopesHaveCrossScopeLinks[scope].append(spicyFieldName)
+                        linkObjectField = _processNonUsageScope(switch, object, item, scope, objectField)
 
                     if not object.logWithParent:
                         isSelfContained = False
@@ -301,6 +309,137 @@ def processBitfieldFile(file):
             newBitfield.addField(newField)
         bitfieldDictionary[bitfield["name"]] = newBitfield
     return bitfieldDictionary
+    
+def _processBasicType(zeekFields, zeekField, object, field, type):
+    zeekField.name = utils.commandNameToConst(object.name).lower() + "_" + utils.commandNameToConst(field.name).lower()
+    field.zeekName = zeekField.name
+    zeekField.type =  type
+    zeekFields.append(zeekField)
+    object.addIncludedField(field)
+    
+def _processCustomType(zeekFields, zeekField, object, field, customFieldTypes):
+    _processBasicType(zeekFields, zeekField, object, field, utils.zeekTypeMapping(customFieldTypes[field.type].returnType))
+    
+def _processSpicyType(zeekFields, zeekField, object, field):
+    _processBasicType(zeekFields, zeekField, object, field, utils.spicyToZeek[field.type])
+    
+def _processSwitchType(linkingFields, object, field, scope, scopes, allObjects, allSwitches):
+    switchType = getSwitchType(field.referenceType, field, scope, scopes, allObjects, allSwitches)
+    if switchType == "invalid":
+        print("Unknown switch")
+        print(field.name)
+    elif switchType == "link":
+        for switchScope in scopes: 
+            if field.referenceType in allSwitches[utils.normalizedScope(switchScope, "")]:
+                referencedObject = allSwitches[utils.normalizedScope(switchScope, "")][field.referenceType]
+                break
+        spicyFieldName = referencedObject.dependsOn.name[0].lower() + referencedObject.dependsOn.name[1:] + "LinkID"
+        linkObjectField = objects.Link(spicyFieldName, "parentLinkId")
+        object.addLinkField(linkObjectField)
+        object.needsSpecificExport = True
+        for option in referencedObject.options:
+           object.addExcludedField(option.action.name)
+        linkFieldName = utils.commandNameToConst(referencedObject.dependsOn.name).lower() + "_link_id"
+        zeekLinkingField = zeektypes.ZeekField(linkFieldName, "string")
+        linkingFields.append(zeekLinkingField)
+    elif switchType == "contained":
+        object.addIncludedField(field.name)
+        
+def _processBitsType(zeekFields, object, field, bitfields, scope, generalScope):
+    referenceType = field.referenceType
+    field.zeekName = utils.commandNameToConst(object.name).lower() + "_" +  utils.commandNameToConst(field.name).lower()
+    try:
+        reference = bitfields[scope][referenceType]
+    except KeyError:
+        try: 
+           reference = bitfields[generalScope][referenceType]
+        except KeyError:
+            print("Unknown bitfield")
+            return
+    for bitField in reference.fields:
+        zeekType = utils.spicyToZeek[bitField.type]
+        fieldname = field.zeekName + "_" + utils.commandNameToConst(bitField.name).lower()
+        zeekBitField = zeektypes.ZeekField(fieldname, zeekType)
+        zeekFields.append(zeekBitField)
+    object.addIncludedField(field)
+    
+def _processObjectLink(logStructure, zeekObjects, scope, zeekMainFileObject):
+    if logStructure not in zeekObjects[utils.normalizedScope(scope, "object")]:
+        zeekObject = zeektypes.ZeekRecord(logStructure, scope)
+        zeekObjects[utils.normalizedScope(scope, "object")][logStructure] = zeekObject
+        zeekMainFileObject.addRecord(zeekObject)
+    else:
+        zeekObject = zeekObjects[utils.normalizedScope(scope, "object")][logStructure]
+    return zeekObject
+    
+    
+def _processLinkingField(referencedObject, linkingFields, zeekObjects, scope, zeekMainFileObject):
+    linkFieldName = utils.commandNameToConst(referencedObject.name).lower() + "_link_id"
+    zeekLinkingField = zeektypes.ZeekField(linkFieldName, "string")
+    linkingFields.append(zeekLinkingField)
+    for logStructure in referencedObject.zeekStructure:
+        zeekObject = _processObjectLink(logStructure, zeekObjects, scope, zeekMainFileObject)
+        zeekObject.addExternalLinkFields(zeekLinkingField)
+
+def _processObjectType(field, linkingFields, object, allObjects, generalScope, scopes, scopedObjects, zeekObjects, zeekMainFileObject):
+    referencedObject = None
+    if field.referenceType in allObjects[generalScope]:
+        referencedObject = allObjects[generalScope][field.referenceType]
+    elif field.referenceType not in scopedObjects:
+        print("Referencing out of scope object")
+        for objectScope in scopes: 
+            if field.referenceType in allObjects[utils.normalizedScope(objectScope, "object")]:
+                referencedObject = allObjects[utils.normalizedScope(objectScope, "object")][field.referenceType]
+                break
+        if referencedObject == None:
+            print("Unknown Reference: {}".format(referenceType))
+            return
+    else: 
+        referencedObject = scopedObjects[field.referenceType]
+    if referencedObject.logIndependently == True:
+        linkingDependency = inputs.Dependency("objectParentLinkId", "string")
+        referencedObject.addDependency(linkingDependency)
+        spicyFieldName = referencedObject.name[0].lower() + referencedObject.name[1:] + "LinkID"
+        linkObjectField = objects.Link(spicyFieldName, "parentLinkId")
+        object.addLinkField(linkObjectField)
+        linkEndObjectField = objects.Link(spicyFieldName, "parentLinkId", True)
+        referencedObject.addLinkField(linkEndObjectField)
+        object.addExcludedField(field.name)  
+        object.needsSpecificExport = True
+        _processLinkingField(referencedObject, linkingFields, zeekObjects, scope, zeekMainFileObject)
+        field.zeekName = utils.commandNameToConst(object.name).lower() + "_" +  utils.commandNameToConst(field.name).lower()
+        
+def _processListType(zeekFields, field, linkingFields, object, scope, scopes, allObjects, zeekObjects, zeekMainFileObject):
+    if field.elementType in utils.spicyToZeek:
+        zeekFieldName = utils.commandNameToConst(object.name).lower() + "_" +  utils.commandNameToConst(field.name).lower()
+        field.zeekName = zeekFieldName
+        zeekType = "vector of {}".format(utils.spicyToZeek[field.elementType])
+        zeekBitField = zeektypes.ZeekField(zeekFieldName, zeekType)
+        object.addExcludedField(field.name)
+        zeekFields.append(zeekBitField)
+    elif field.elementType == "object":
+        referencedObject = utils.getObject(field.referenceType, scopes, allObjects)
+        spicyFieldName = referencedObject.name[0].lower() + referencedObject.name[1:] + "LinkID"
+        linkObjectField = objects.Link(spicyFieldName, "listParentLinkId")
+        object.addLinkField(linkObjectField)
+        linkEndObjectField = objects.Link(spicyFieldName, "listParentLinkId", True)
+        referencedObject.addLinkField(linkEndObjectField)
+        linkInput = inputs.Input("self." + spicyFieldName)
+        field.addInput(linkInput)
+        linkingDependency = inputs.Dependency("listParentLinkId", "string")
+        referencedObject.addDependency(linkingDependency)
+        referencedObject.logIndependently == True
+        object.addExcludedField(field.name)
+        object.needsSpecificExport = True
+        _processLinkingField(referencedObject, linkingFields, zeekObjects, scope, zeekMainFileObject)
+        
+def _linkScope(scope, zeekObjects):
+    # I know this is terrible practice but my graph theory sucks and I want this to work
+    if scope in utils.scopesHaveCrossScopeLinks:
+        zeekMainObject = zeekObjects[utils.normalizedScope(scope, "object")][scope]
+        for item in utils.scopesHaveCrossScopeLinks[scope]:
+            zeekLinkingField = zeektypes.ZeekField(utils.commandNameToConst(item).lower(), "string")
+            zeekMainObject.addExternalLinkFields(zeekLinkingField)
 
 def createZeekObjects(scopes, customFieldTypes, bitfields, allObjects, allSwitches):
     zeekObjects = {}
@@ -318,154 +457,25 @@ def createZeekObjects(scopes, customFieldTypes, bitfields, allObjects, allSwitch
                 if switchType == "trivial":
                     object.needsSpecificExport = False
                     continue
-            for idx, field in enumerate(object.fields):
+            for field in object.fields:
                 zeekField = zeektypes.ZeekField()
                 if field.type in customFieldTypes:
-                    zeekField.name = utils.commandNameToConst(object.name).lower() + "_" +  utils.commandNameToConst(field.name).lower()
-                    field.zeekName = zeekField.name
-                    zeekField.type =  utils.zeekTypeMapping(customFieldTypes[field.type].returnType)
-                    zeekFields.append(zeekField)
-                    object.addIncludedField(field)
+                    _processCustomType(zeekFields, zeekField, object, field, customFieldTypes)
                 elif field.type in utils.spicyToZeek:
-                    zeekField.name = utils.commandNameToConst(object.name).lower() + "_" + utils.commandNameToConst(field.name).lower()
-                    field.zeekName = zeekField.name
-                    zeekField.type = utils.spicyToZeek[field.type]
-                    zeekFields.append(zeekField)
-                    object.addIncludedField(field)
+                    _processSpicyType(zeekFields, zeekField, object, field)
                 elif field.type == "switch":
-                    switchType = getSwitchType(field.referenceType, field, scope, scopes, allObjects, allSwitches)
-                    if switchType == "invalid":
-                        print("Unknown switch")
-                        print(field.name)
-                    elif switchType == "link":
-                        for switchScope in scopes: 
-                            if field.referenceType in allSwitches[utils.normalizedScope(switchScope, "")]:
-                                referencedObject = allSwitches[utils.normalizedScope(switchScope, "")][field.referenceType]
-                                break
-                        linkFieldName = utils.commandNameToConst(referencedObject.dependsOn.name).lower() + "_link_id"
-                        spicyFieldName = referencedObject.dependsOn.name[0].lower() + referencedObject.dependsOn.name[1:] + "LinkID"
-                        linkObjectField = objects.Link(spicyFieldName, "parentLinkId")
-                        # newObjectField = objects.ObjectField(spicyFieldName, "", "linking")
-                        object.addLinkField(linkObjectField)
-                        zeekLinkingField = zeektypes.ZeekField(linkFieldName, "string")
-                        # object.addIncludedField(newObjectField)
-                        object.needsSpecificExport = True
-                        for option in referencedObject.options:
-                           object.addExcludedField(option.action.name) 
-                        linkingFields.append(zeekLinkingField)
-                    elif switchType == "contained":
-                        # for switchScope in scopes: 
-                        #     if field.referenceType in allSwitches[utils.normalizedScope(switchScope, "")]:
-                        #         referencedObject = allSwitches[utils.normalizedScope(switchScope, "")][field.referenceType]
-                        #         break
-                        object.addIncludedField(field.name)                 
+                    _processSwitchType(linkingFields, object, field, scope, scopes, allObjects, allSwitches)
                 elif field.type == "bits":
-                    referenceType = field.referenceType
-                    field.zeekName = utils.commandNameToConst(object.name).lower() + "_" +  utils.commandNameToConst(field.name).lower()
-                    try:
-                        reference = bitfields[scope][referenceType]
-                    except KeyError:
-                        try: 
-                           reference = bitfields[generalScope][referenceType]
-                        except KeyError:
-                            print("Unknown bitfield")
-                            continue
-                    for bitField in reference.fields:
-                        zeekType = utils.spicyToZeek[bitField.type]
-                        fieldname = field.zeekName + "_" + utils.commandNameToConst(bitField.name).lower()
-                        zeekBitField = zeektypes.ZeekField(fieldname, zeekType)
-                        zeekFields.append(zeekBitField)
-                    object.addIncludedField(field)
+                    _processBitsType(zeekFields, object, field, bitfields, scope, generalScope)
                 elif field.type == "object":
-                    referencedObject = None
-                    if field.referenceType in allObjects[generalScope]:
-                        referencedObject = allObjects[generalScope][field.referenceType]
-                    elif referenceType not in scopedObjects:
-                        print("Referencing out of scope object")
-                        for objectScope in scopes: 
-                            if field.referenceType in allObjects[utils.normalizedScope(objectScope, "object")]:
-                                referencedObject = allObjects[utils.normalizedScope(objectScope, "object")][field.referenceType]
-                                break
-                        if referencedObject == None:
-                            print("Unknown Reference: {}".format(referenceType))
-                            continue
-                    else: 
-                        referencedObject = scopedObjects[field.referenceType]
-                    if referencedObject.logIndependently == True:
-                        linkFieldName = utils.commandNameToConst(referencedObject.name).lower() + "_link_id"
-                        linkingDependency = inputs.Dependency("objectParentLinkId", "string")
-                        spicyFieldName = referencedObject.name[0].lower() + referencedObject.name[1:] + "LinkID"
-                        linkEndObjectField = objects.Link(spicyFieldName, "parentLinkId", True)
-                        linkObjectField = objects.Link(spicyFieldName, "parentLinkId")
-                        # newObjectField = objects.ObjectField(spicyFieldName, "", "linking")
-                        referencedObject.addDependency(linkingDependency)
-                        # object.addFieldInLocation(idx, newObjectField)
-                        object.addLinkField(linkObjectField)
-                        referencedObject.addLinkField(linkEndObjectField)
-                        zeekLinkingField = zeektypes.ZeekField(linkFieldName, "string")
-                        # object.addIncludedField(newObjectField)
-                        object.addExcludedField(field.name)  
-                        object.needsSpecificExport = True
-                        linkingFields.append(zeekLinkingField)
-                        for logStructure in referencedObject.zeekStructure:
-                            if logStructure not in zeekObjects[utils.normalizedScope(scope, "object")]:
-                                zeekObject = zeektypes.ZeekRecord(logStructure, scope)
-                                zeekObjects[utils.normalizedScope(scope, "object")][logStructure] = zeekObject
-                                zeekMainFileObject.addRecord(zeekObject)
-                            else:
-                                zeekObject = zeekObjects[utils.normalizedScope(scope, "object")][logStructure]
-                            zeekObject.addExternalLinkFields(zeekLinkingField)
-                        field.zeekName = utils.commandNameToConst(object.name).lower() + "_" +  utils.commandNameToConst(field.name).lower()
+                    _processObjectType(field, linkingFields, object, allObjects, generalScope, scopes, scopedObjects, zeekObjects, zeekMainFileObject)
                 elif field.type == "list":
-                    if field.elementType in utils.spicyToZeek:
-                        zeekType = "vector of {}".format(utils.spicyToZeek[field.elementType])
-                        zeekFieldName = utils.commandNameToConst(object.name).lower() + "_" +  utils.commandNameToConst(field.name).lower()
-                        field.zeekName = zeekFieldName
-                        zeekBitField = zeektypes.ZeekField(zeekFieldName, zeekType)
-                        object.addExcludedField(field.name)
-                        zeekFields.append(zeekBitField)
-                    elif field.elementType == "object":
-                        referencedObject = utils.getObject(field.referenceType, scopes, allObjects)
-                        linkFieldName = utils.commandNameToConst(referencedObject.name).lower() + "_link_id"
-                        spicyFieldName = referencedObject.name[0].lower() + referencedObject.name[1:] + "LinkID"
-                        linkEndObjectField = objects.Link(spicyFieldName, "listParentLinkId", True)
-                        linkObjectField = objects.Link(spicyFieldName, "listParentLinkId")
-                        # newObjectField = objects.ObjectField(spicyFieldName, "", "linking")
-                        object.addLinkField(linkObjectField)
-                        referencedObject.addLinkField(linkEndObjectField)
-                        zeekLinkingField = zeektypes.ZeekField(linkFieldName, "string")
-                        linkingDependency = inputs.Dependency("listParentLinkId", "string")
-                        linkInput = inputs.Input("self." + spicyFieldName)
-                        field.addInput(linkInput)
-                        referencedObject.addDependency(linkingDependency)
-                        referencedObject.logIndependently == True
-                        # object.addIncludedField(newObjectField)
-                        object.addExcludedField(field.name)
-                        object.needsSpecificExport = True
-                        linkingFields.append(zeekLinkingField)
-                        for logStructure in referencedObject.zeekStructure:
-                            if logStructure not in zeekObjects[utils.normalizedScope(scope, "object")]:
-                                zeekObject = zeektypes.ZeekRecord(logStructure, scope)
-                                zeekObjects[utils.normalizedScope(scope, "object")][logStructure] = zeekObject
-                                zeekMainFileObject.addRecord(zeekObject)
-                            else:
-                                zeekObject = zeekObjects[utils.normalizedScope(scope, "object")][logStructure]
-                            zeekObject.addExternalLinkFields(zeekLinkingField)
+                    _processListType(zeekFields, field, linkingFields, object, scope, scopes, allObjects, zeekObjects, zeekMainFileObject)
             for logStructure in object.zeekStructure:
-                if logStructure not in zeekObjects[utils.normalizedScope(scope, "object")]:
-                    zeekObject = zeektypes.ZeekRecord(logStructure, scope)
-                    zeekObjects[utils.normalizedScope(scope, "object")][logStructure] = zeekObject
-                    zeekMainFileObject.addRecord(zeekObject)
-                else:
-                    zeekObject = zeekObjects[utils.normalizedScope(scope, "object")][logStructure]
+                zeekObject = _processObjectLink(logStructure, zeekObjects, scope, zeekMainFileObject)
+                zeekObject.addExternalLinkFieldList(linkingFields)
                 zeekObject.addCommandStructure(object)
                 zeekObject.addFieldList(zeekFields)
-                zeekObject.addExternalLinkFieldList(linkingFields)
     for scope in scopes:
-        # I know this is terrible practice but my graph theory sucks and I want this to work
-        if scope in utils.scopesHaveCrossScopeLinks:
-            zeekMainObject = zeekObjects[utils.normalizedScope(scope, "object")][scope]
-            for item in utils.scopesHaveCrossScopeLinks[scope]:
-                zeekLinkingField = zeektypes.ZeekField(utils.commandNameToConst(item).lower(), "string")
-                zeekMainObject.addExternalLinkFields(zeekLinkingField)
+        _linkScope(scope, zeekObjects)
     return zeekObjects, zeekMainFileObject
