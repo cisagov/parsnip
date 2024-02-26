@@ -89,7 +89,6 @@ class ZeekMain:
             returnString += "{}global emit_{}_{}: function(".format(utils.SINGLE_TAB, utils.PROTOCOL_NAME.lower(), record.name.lower())
             if utils.USES_LAYER_2:
                 if record.scope != "":
-                    # TODO: Figure out what is missing here...
                     returnString += "{}_record: {}::{}".format(record.name.lower(), record.scope, record.name)
                 else:
                     returnString += "{}_record: {}".format(record.name.lower(), record.name)

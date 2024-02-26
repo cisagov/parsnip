@@ -2,4 +2,4 @@
 #
 # @TEST-DOC: Check that the ${protocolName} analyzer is available.
 #
-# @TEST-EXEC: zeek -NN | grep -Eqi 'ANALYZER_${protocolNameUpper}'
+# @TEST-EXEC: zeek -NN | grep -Eqi 'ANALYZER_SPICY_${protocolNameUpper}'

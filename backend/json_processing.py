@@ -25,7 +25,7 @@ def loadFiles(rootFilePath, scopes):
         
         if os.path.isfile(objectFilePath):
             print("Processing {0}".format(objectFilePath))
-            objects[utils.normalizedScope(scope, "object")] = processObjectsFile(objectFilePath)
+            objects[utils.normalizedScope(scope, "object")] = processObjectsFile(objectFilePath, scope)
         if os.path.isfile(switchesFilePath):
             print("Processing {0}".format(switchesFilePath))
             switches[utils.normalizedScope(scope, "switch")] = processSwitchFile(switchesFilePath)
@@ -114,7 +114,6 @@ def getSwitchType(switchName, objectField, switchUsageScope, scopes, allObjects,
                         linkRequired = True
                         isSkippedClass = False
                         linkObjectField = _processNonUsageScope(switch, object, item, scope, objectField)
-
                     if not object.logWithParent:
                         isSelfContained = False
                     else:
@@ -198,15 +197,15 @@ def _processJoiningConditional(conditional, key, joiner, startingIndex):
 def processConditional(conditional):
     return _processConditional(conditional, 0)
 
-def processObjectsFile(file):
+def processObjectsFile(file, scope):
     objectsDictionary = {}
     with open(file, "r+") as file:
         objectsList = json.load(file)
     for object in objectsList:
         if "logWithParent" in object:
-            newObject = objects.Object(object["name"], object["reference"], object["notes"], object["logIndependently"], object["referenceCount"], object["logWithParent"])
+            newObject = objects.Object(object["name"], object["reference"], object["notes"], object["logIndependently"], object["referenceCount"], scope, object["logWithParent"])
         else:
-            newObject = objects.Object(object["name"], object["reference"], object["notes"], object["logIndependently"], object["referenceCount"])
+            newObject = objects.Object(object["name"], object["reference"], object["notes"], object["logIndependently"], object["referenceCount"], scope)
         if "dependsOn" in object:
             for dependency in object["dependsOn"]:
                 newDependency = createDependencyFromJSON(dependency)
@@ -319,11 +318,11 @@ def _processBasicType(zeekFields, zeekField, object, field, type):
     
 def _processCustomType(zeekFields, zeekField, object, field, customFieldTypes):
     _processBasicType(zeekFields, zeekField, object, field, utils.zeekTypeMapping(customFieldTypes[field.type].returnType))
-    
+       
 def _processSpicyType(zeekFields, zeekField, object, field):
     _processBasicType(zeekFields, zeekField, object, field, utils.spicyToZeek[field.type])
     
-def _processSwitchType(linkingFields, object, field, scope, scopes, allObjects, allSwitches):
+def _processSwitchType(zeekFields, linkingFields, object, field, scope, scopes, allObjects, allSwitches):
     switchType = getSwitchType(field.referenceType, field, scope, scopes, allObjects, allSwitches)
     if switchType == "invalid":
         print("Unknown switch")
@@ -343,8 +342,37 @@ def _processSwitchType(linkingFields, object, field, scope, scopes, allObjects, 
         zeekLinkingField = zeektypes.ZeekField(linkFieldName, "string")
         linkingFields.append(zeekLinkingField)
     elif switchType == "contained":
-        object.addIncludedField(field.name)
-        
+        referencedObject = None
+        for switchScope in scopes: 
+            if field.referenceType in allSwitches[utils.normalizedScope(switchScope, "")]:
+                referencedObject = allSwitches[utils.normalizedScope(switchScope, "")][field.referenceType]
+                break
+        if referencedObject is not None:
+            for option in referencedObject.options:
+                if option.action.type == "object":
+                    object.addIncludedField(field.name)
+                elif option.action.type == "void":
+                    pass
+                elif option.action.type in utils.spicyToZeek:
+                    zeekField = zeektypes.ZeekField()
+                    _processBasicType(zeekFields, zeekField, object, option.action.name, utils.spicyToZeek[option.action.type])
+    elif switchType == "trivial":
+        # If a trivial switch is in an object that also contains fields, the switch objects should be logged with their parent
+        referencedObject = None
+        for switchScope in scopes: 
+            if field.referenceType in allSwitches[utils.normalizedScope(switchScope, "")]:
+                referencedObject = allSwitches[utils.normalizedScope(switchScope, "")][field.referenceType]
+                break
+        if referencedObject is not None:
+            for option in referencedObject.options:
+                if option.action.type == "object":
+                    for objectScope in scopes:
+                        if option.action.referenceType in allObjects[utils.normalizedScope(objectScope, "")]:
+                            actionObject = allObjects[utils.normalizedScope(objectScope, "")][option.action.referenceType]
+                            break
+                    if actionObject is not None:
+                        actionObject.logWithParent = True
+                            
 def _processBitsType(zeekFields, object, field, bitfields, scope, generalScope):
     referenceType = field.referenceType
     field.zeekName = utils.commandNameToConst(object.name).lower() + "_" +  utils.commandNameToConst(field.name).lower()
@@ -392,7 +420,7 @@ def _processObjectType(field, linkingFields, object, allObjects, generalScope, s
                 referencedObject = allObjects[utils.normalizedScope(objectScope, "object")][field.referenceType]
                 break
         if referencedObject == None:
-            print("Unknown Reference: {}".format(referenceType))
+            print("Unknown Reference: {}".format(field.referenceType))
             return
     else: 
         referencedObject = scopedObjects[field.referenceType]
@@ -406,6 +434,7 @@ def _processObjectType(field, linkingFields, object, allObjects, generalScope, s
         referencedObject.addLinkField(linkEndObjectField)
         object.addExcludedField(field.name)  
         object.needsSpecificExport = True
+        # TODO: Figure out what is going on here
         _processLinkingField(referencedObject, linkingFields, zeekObjects, scope, zeekMainFileObject)
         field.zeekName = utils.commandNameToConst(object.name).lower() + "_" +  utils.commandNameToConst(field.name).lower()
         
@@ -464,7 +493,7 @@ def createZeekObjects(scopes, customFieldTypes, bitfields, allObjects, allSwitch
                 elif field.type in utils.spicyToZeek:
                     _processSpicyType(zeekFields, zeekField, object, field)
                 elif field.type == "switch":
-                    _processSwitchType(linkingFields, object, field, scope, scopes, allObjects, allSwitches)
+                    _processSwitchType(zeekFields, linkingFields, object, field, scope, scopes, allObjects, allSwitches)
                 elif field.type == "bits":
                     _processBitsType(zeekFields, object, field, bitfields, scope, generalScope)
                 elif field.type == "object":

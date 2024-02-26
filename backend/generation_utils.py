@@ -480,6 +480,8 @@ def writeTestFiles(outRootFolder):
     os.makedirs(testsFolder, exist_ok=True)
     scriptsFolder = os.path.join(testingFolder, "scripts")
     os.makedirs(scriptsFolder, exist_ok=True)
+    filesFolder = os.path.join(testingFolder, "files")
+    os.makedirs(filesFolder, exist_ok=True)
 
     copyFile(os.path.join("templates", "btest.cfg.in"),
              os.path.join(testingFolder, "btest.cfg"))
@@ -498,6 +500,38 @@ def writeTestFiles(outRootFolder):
     
     copyFile(os.path.join("templates", "get-zeek-env.in"),
              os.path.join(scriptsFolder, "get-zeek-env"))
+
+    copyFile(os.path.join("templates", "random.seed.in"),
+             os.path.join(filesFolder, "random.seed"))
+
+def writePackagingFiles(configuration, outRootFolder):
+    # Function to write out zkg.meta file
+    if not utils.USES_LAYER_2:
+        analyzerType = "protocol"
+        if configuration.usesTCP and configuration.usesUDP:
+            transportProtocolInformation = "\ntransport = IP"
+        elif configuration.usesTCP:
+            transportProtocolInformation = "\ntransport = TCP"
+        elif configuration.usesUDP:
+            transportProtocolInformation = "\ntransport = UDP"
+    else:
+        analyzerType = "packet"
+    entryPointParts = configuration.entryPoint.split(".")
+    if 2 != len(entryPointParts):
+        entryPoint = ""
+    else:
+        entryPoint = entryPointParts[1]
+    data = {
+        "analyzerType": analyzerType,
+        "transportProtocolInformation": transportProtocolInformation,
+        "protocolName": utils.PROTOCOL_NAME,
+        "entryPoint": entryPoint,
+        "protocolNameUpper": utils.PROTOCOL_NAME.upper()
+    }
+    copyTemplateFile(os.path.join("templates", "zkg.meta.in"),
+                    data,
+                    os.path.join(outRootFolder, "zkg.meta"))
+    
 
     #data = {
     #    "protocolName": utils.PROTOCOL_NAME,
@@ -843,6 +877,7 @@ def writeParserFiles(configuration, outRootFolder, zeekTypes, zeekMainFileObject
     os.makedirs(outRootFolder, exist_ok=True)
     # Fill in the rest of the structure
     writeCMakeFiles(outRootFolder)
+    writePackagingFiles(configuration, outRootFolder)
     writeTestFiles(outRootFolder)
     # Must be called in this order...there are side effects of calling this one
     # that are required for the other one to work correctly

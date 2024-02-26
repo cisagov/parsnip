@@ -82,11 +82,12 @@ class ObjectField:
         return outputString
 
 class Object:
-    def __init__(self, name, reference, notes, logIndependently, referenceCount, logWithParent=False):
+    def __init__(self, name, reference, notes, logIndependently, referenceCount, scope, logWithParent=False):
         self.name = name
         self.reference = reference
         self.zeekStructure = []
         self.notes = notes
+        self.scope = scope
         self.logIndependently = logIndependently
         self.dependsOn = []
         self.fields = []
@@ -299,24 +300,24 @@ class Object:
                 if objectName in allObjects[utils.normalizedScope(scope, "")]:
                     object = allObjects[utils.normalizedScope(scope, "")][objectName]
                     argument = action.name
-                    if not object.needsSpecificExport:
+                    if not self.needsSpecificExport:
                         argument = "{}?${}".format(processingName[:-1], argument)
                     convertingFunctionString += "{}if ({}){{\n".format(utils.getTabString(tabSize), argument)
                     objectZeekStructureName = processingName + action.name
                     convertingFunctionString += object.makeEventBackend(moduleName, objectZeekStructureName, allEnums, allBitfields, allObjects, allSwitches, scopes, False, localVariableName, objectZeekStructureName, startingTabSize + 1, childOverride)
                     convertingFunctionString += "{}}}\n".format(utils.getTabString(tabSize))
         else:
-            argument = action.name
+            actionName = action.name
             # TODO: Figure this out
             # Huh???? Where is object defined?
             #if not object.needsSpecificExport:
             #    argument = "{}?${}".format(processingName[:-1], argument)
             # Until we can get this figure out...
-            argument = "{}?${}".format(processingName[:-1], argument)
-            
-            convertingFunctionString += "{}if ({}){{\n".format(utils.getTabString(tabSize), argument)
-            convertingFunctionString += "{}{}${} = {}{};\n".format(utils.getTabString(tabSize + 1), localVariableName, field.zeekName, processingName, action.name)
-            convertingFunctionString += "{}}}\n".format(utils.getTabString(tabSize))
+            if action.type != "void":
+                argument = "{}?${}".format(processingName[:-1], actionName)
+                convertingFunctionString += "{}if ({}){{\n".format(utils.getTabString(tabSize), argument)
+                convertingFunctionString += "{}{}${} = {}{};\n".format(utils.getTabString(tabSize + 1), localVariableName, field.zeekName, processingName, actionName)
+                convertingFunctionString += "{}}}\n".format(utils.getTabString(tabSize))
         return convertingFunctionString
         
     def _makeEventBackendForSwitchOptions(self, field, switch, processingName, moduleName, allEnums, allBitfields, allObjects, allSwitches, scopes, localVariableName, startingTabSize, childOverride, tabSize):
@@ -335,7 +336,7 @@ class Object:
                 break
         switchType = ""            
         if switch != None:
-            switchType = json_processing.getSwitchType(field.referenceType, field, switchScope, scopes, allObjects, allSwitches)
+            switchType = json_processing.getSwitchType(field.referenceType, field, self.scope, scopes, allObjects, allSwitches)
         if switchType != "contained":
             return ""
 
@@ -346,6 +347,8 @@ class Object:
         return convertingFunctionString
                 
     def makeEventBackend(self, moduleName, zeekStructureName, allEnums, allBitfields, allObjects, allSwitches, scopes, includeNonFields = True, logObjectVariableName = "", itemPrefix = "", startingTabSize = 1, specificExportOverride=False):
+        if "TrimPoints" in self.name:
+            pass
         convertingFunctionString = ""
         localVariableName = logObjectVariableName
         tabSize = startingTabSize
