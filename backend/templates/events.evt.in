@@ -1,0 +1,4 @@
+import ${scope};
+${additionalScopes}import Zeek_${protocolName};
+
+${protocolEvents}${entryPointEvent}${exportString}${objectEvents}

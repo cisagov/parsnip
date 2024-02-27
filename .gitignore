@@ -12,3 +12,6 @@ __pycache__
 /backend/paths*.json
 /backend/cycles.txt
 /frontend/app/flask_session
+*.hlto
+Dockerfile
+*.log

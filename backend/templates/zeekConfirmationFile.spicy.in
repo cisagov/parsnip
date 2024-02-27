@@ -1,0 +1,13 @@
+module Zeek_${protocolName};
+
+import ${scope};
+import spicy;
+
+on ${scope}::Messages::%done {
+${tab}spicy::accept_input();
+}
+
+on ${scope}::Messages::%error {
+${tab}spicy::decline_input("error parsing ${protocolName} message");
+}
+

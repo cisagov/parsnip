@@ -1,0 +1,9 @@
+# Warning! This is an automatically generated file!
+#
+# @TEST-DOC: Test parsing behavior of ${protocolName}.
+#
+# @TEST-EXEC: spicyc $${DIST}/analyzer/${protocolNameLower}.spicy -j -d -o ${protocolNameLower}.hlto
+#
+# TODO: Add/adapt standalone parsing tests here.
+# @TEST-EXEC: printf "test string" | spicy-dump -p ${scope}::${entryPointName} ${protocolNameLower}.hlto > output 2>&1
+# @TEST-EXEC: TEST_DIFF_CANONIFIER= btest-diff output
