@@ -234,9 +234,11 @@ def determineSpicyStringForType(itemName, itemType, elementType, referenceType, 
 
 def getObject(referenceType, scopes, allObjects):
     referencedObject = None
+    objectScope = None
     for scope in scopes:
         if referenceType in allObjects[normalizedScope(scope, "object")]:
                 referencedObject = allObjects[normalizedScope(scope, "object")][referenceType]
+                objectScope = scope
                 break
-    return referencedObject
+    return referencedObject, objectScope
 
