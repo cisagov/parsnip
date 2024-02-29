@@ -516,6 +516,7 @@ def writePackagingFiles(configuration, outRootFolder):
             transportProtocolInformation = "\ntransport = UDP"
     else:
         analyzerType = "packet"
+        transportProtocolInformation = ""
     entryPointParts = configuration.entryPoint.split(".")
     if 2 != len(entryPointParts):
         entryPoint = ""

@@ -424,7 +424,7 @@ def _processLinkingField(referencedObject, linkingFields, zeekObjects, scope, ze
         zeekObject = _processObjectLink(logStructure, zeekObjects, scope, zeekMainFileObject)
         zeekObject.addExternalLinkFields(zeekLinkingField)
 
-def _processObjectType(field, linkingFields, object, allObjects, generalScope, scopes, scopedObjects, zeekObjects, zeekMainFileObject):
+def _processObjectType(field, linkingFields, object, allObjects, generalScope, scope, scopes, scopedObjects, zeekObjects, zeekMainFileObject):
     referencedObject = None
     if field.referenceType in allObjects[generalScope]:
         referencedObject = allObjects[generalScope][field.referenceType]
@@ -462,7 +462,7 @@ def _processListType(zeekFields, field, linkingFields, object, scope, scopes, al
         object.addExcludedField(field.name)
         zeekFields.append(zeekBitField)
     elif field.elementType == "object":
-        referencedObject = utils.getObject(field.referenceType, scopes, allObjects)
+        referencedObject, objectScope = utils.getObject(field.referenceType, scopes, allObjects)
         spicyFieldName = referencedObject.name[0].lower() + referencedObject.name[1:] + "LinkID"
         linkObjectField = objects.Link(spicyFieldName, "listParentLinkId")
         object.addLinkField(linkObjectField)
@@ -475,7 +475,7 @@ def _processListType(zeekFields, field, linkingFields, object, scope, scopes, al
         referencedObject.logIndependently == True
         object.addExcludedField(field.name)
         object.needsSpecificExport = True
-        _processLinkingField(referencedObject, linkingFields, zeekObjects, scope, zeekMainFileObject)
+        _processLinkingField(referencedObject, linkingFields, zeekObjects, objectScope, zeekMainFileObject)
         
 def _linkScope(scope, zeekObjects):
     # I know this is terrible practice but my graph theory sucks and I want this to work
@@ -512,7 +512,7 @@ def createZeekObjects(scopes, customFieldTypes, bitfields, allObjects, allSwitch
                 elif field.type == "bits":
                     _processBitsType(zeekFields, object, field, bitfields, scope, generalScope)
                 elif field.type == "object":
-                    _processObjectType(field, linkingFields, object, allObjects, generalScope, scopes, scopedObjects, zeekObjects, zeekMainFileObject)
+                    _processObjectType(field, linkingFields, object, allObjects, generalScope, scope, scopes, scopedObjects, zeekObjects, zeekMainFileObject)
                 elif field.type == "list":
                     _processListType(zeekFields, field, linkingFields, object, scope, scopes, allObjects, zeekObjects, zeekMainFileObject)
             for logStructure in object.zeekStructure:
