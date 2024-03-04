@@ -389,8 +389,7 @@ def saveGraphInformation(graph, pathInformation, cycles, missingExpectedTopLevel
                 if index < len(cycle) - 1:
                     cycleString += " -> "
             cycleString += "\n"
-        writeDataToFile(cycleString, "cycles.txt");
-    
+        writeDataToFile(cycleString, "cycles.txt"); 
     if 0 != len(missingExpectedTopLevelNodes):
         writeNodes(missingExpectedTopLevelNodes, "missing_expected_nodes.txt")
         
@@ -547,13 +546,34 @@ def writePackagingFiles(configuration, outRootFolder):
 
     # TODO: Deal with trace tests?
     
-def _writeCoreZeekFiles(configuration, scriptsFolder, zeekMainFileObject):
+def _writeCoreZeekFiles(configuration, scriptsFolder, zeekMainFileObject, allEnums):
     coreFiles = []
     coreFiles.append("__load__.zeek")
     sigsString = ""
+    typesString = ""
+    processingString = ""
+    enumString = ""
     if configuration.signatureFile is not None:
         sigsString = "@load-sigs dpd.sig\n"
-    data = { "sigsString": sigsString }
+    for scope in configuration.scopes:
+        normalScope = utils.normalizedScope(scope, "")
+
+        filePrefix = "@load ./" + normalScope.lower()
+
+        typesString += filePrefix + "_types"
+        processingString += filePrefix + "_processing"
+        if utils.normalizedScope(scope, "enum") in allEnums:
+            enumString += filePrefix + "_enum"
+        if scope != configuration.scopes[-1]:
+            typesString += "\n"
+            processingString += "\n"
+
+    data = { 
+        "sigsString": sigsString,
+        "enumString": enumString,
+        "typesString": typesString,
+        "processingString": processingString
+    }
     copyTemplateFile(os.path.join("templates", "__load__.zeek.in"), data,
                      os.path.join(scriptsFolder, "__load__.zeek"))
 
@@ -625,7 +645,7 @@ def writeZeekFiles(configuration, outRootFolder, zeekTypes, zeekMainFileObject, 
     scriptsFolder = os.path.join(outRootFolder, "scripts")
     os.makedirs(scriptsFolder, exist_ok=True)
     
-    scriptFiles = _writeCoreZeekFiles(configuration, scriptsFolder, zeekMainFileObject)
+    scriptFiles = _writeCoreZeekFiles(configuration, scriptsFolder, zeekMainFileObject, enums)
     
     # Create all the other files
     for scope in configuration.scopes:
