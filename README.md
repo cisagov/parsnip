@@ -36,7 +36,7 @@ Please refer to [docs/parsnip.md](docs/parsnip.md) for more information on using
 | **Private status approved by:**       | [@h-m-f-t](https://github.com/h-m-f-t)     |
 | **Private exception reason:**         | Pending approval to open source from INL |
 | **Repository contents:**              | ADD ME |
-| **Planned repository deletion date:** | N/A                                    |
+| **Planned repository public date:** | Est. June 2024                                   |
 | **Responsible contacts:**             | [@rare-candies](https://github.com/rare-candies) |
 
 See our [development guide](https://github.com/cisagov/development-guide#readme)
