@@ -46,7 +46,7 @@ def createAndUseGraphInformation(configuration, objects, switches, bitfields, en
     # Use the graph information
     ############################################################################
     printGraphWarnings(cycles, missingExpectedTopLevelNodes, unexpectedTopLevelNodes)
-    saveGraphInformation(graph, pathInformation, cycles, missingExpectedTopLevelNodes, unexpectedTopLevelNodes)
+    #saveGraphInformation(graph, pathInformation, cycles, missingExpectedTopLevelNodes, unexpectedTopLevelNodes)
     
     updateObjectsBasedOnGraphInformation(cycles, pathInformation, objects, entryPointScope, entryPointName)
 

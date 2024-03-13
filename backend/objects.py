@@ -31,7 +31,7 @@ class ObjectField:
         
     def addInput(self, input):
         for existingInput in self.inputs:
-            if existingInput.equal(input):
+            if existingInput.source == input.source:
                 return
         if input not in self.inputs:
             self.inputs.append(input)

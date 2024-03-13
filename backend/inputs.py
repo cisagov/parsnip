@@ -3,20 +3,8 @@
 import utils
 
 class Input:
-    def __init__(self, source, minus=""):
+    def __init__(self, source):
         self.source = source
-        self.minus = minus
-        self.minusInUse = True if "" != self.minus else False
-
-    def equal(self, other):
-        return self.source == other.source and \
-               self.minus == other.minus
-    
-    def getString(self):
-        outputString = self.source
-        if self.minusInUse:
-            outputString += " - " + str(self.minus)
-        return outputString
 
 class Dependency:
     def __init__(self, name, type, size="", referenceType = "", scope = ""):
