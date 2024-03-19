@@ -71,7 +71,7 @@ class ZeekMain:
             returnString += (" " * 27)
         else:
             recordLogName = "LOG_{}".format(records[0].name.upper())
-            fileString += " {} ".format(recordLogName)
+            returnString += " {} ".format(recordLogName)
         returnString += "};\n\n"
         return returnString
         
