@@ -321,8 +321,22 @@ def _processCustomType(zeekFields, zeekField, object, field, customFieldTypes):
        
 def _processSpicyType(zeekFields, zeekField, object, field):
     _processBasicType(zeekFields, zeekField, object, field, utils.spicyToZeek[field.type])
+
+def _processSwitchAction(type, action, zeekFields, object, linkingFields, scope, scopes, allObjects, zeekObjects, zeekMainFileObject):
+    if action.type == "object":
+        if type == "link":
+            object.addExcludedField(action.name)
+        else:
+            object.addExcludedField(action.name)
+    elif action.type in utils.spicyToZeek:
+        zeekField = zeektypes.ZeekField()
+        _processBasicType(zeekFields, zeekField, object, action.name, utils.spicyToZeek[action.type])
+    elif action.type == "list":
+        _processListType(zeekFields, action, linkingFields, object, scope, scopes, allObjects, zeekObjects, zeekMainFileObject)
+    else:
+        print("Invalid switch option type: {} in {}".format(action.type, object.name))
     
-def _processSwitchType(zeekFields, linkingFields, object, field, scope, scopes, allObjects, allSwitches):
+def _processSwitchType(zeekFields, linkingFields, object, field, scope, scopes, allObjects, allSwitches, zeekObjects, zeekMainFileObject):
     switchType = getSwitchType(field.referenceType, field, scope, scopes, allObjects, allSwitches)
     if switchType == "invalid":
         print("Unknown switch")
@@ -337,7 +351,9 @@ def _processSwitchType(zeekFields, linkingFields, object, field, scope, scopes, 
         object.addLinkField(linkObjectField)
         object.needsSpecificExport = True
         for option in referencedObject.options:
-           object.addExcludedField(option.action.name)
+            _processSwitchAction("link", option.action, zeekFields, object, linkingFields, scope, scopes, allObjects, zeekObjects, zeekMainFileObject)
+        if referencedObject.default is not None:
+            _processSwitchAction("link", referencedObject.default, zeekFields, object, linkingFields, scope, scopes, allObjects, zeekObjects, zeekMainFileObject)
         linkFieldName = utils.commandNameToConst(referencedObject.dependsOn.name).lower() + "_link_id"
         zeekLinkingField = zeektypes.ZeekField(linkFieldName, "string")
         linkingFields.append(zeekLinkingField)
@@ -349,13 +365,9 @@ def _processSwitchType(zeekFields, linkingFields, object, field, scope, scopes, 
                 break
         if referencedObject is not None:
             for option in referencedObject.options:
-                if option.action.type == "object":
-                    object.addIncludedField(field.name)
-                elif option.action.type == "void":
-                    pass
-                elif option.action.type in utils.spicyToZeek:
-                    zeekField = zeektypes.ZeekField()
-                    _processBasicType(zeekFields, zeekField, object, option.action.name, utils.spicyToZeek[option.action.type])
+                _processSwitchAction("contained", option.action, zeekFields, object, linkingFields, scope, scopes, allObjects, zeekObjects, zeekMainFileObject)
+            if referencedObject.default is not None:
+                _processSwitchAction("contained", referencedObject.default, zeekFields, object, linkingFields, scope, scopes, allObjects, zeekObjects, zeekMainFileObject)
     elif switchType == "trivial":
         # If a trivial switch is in an object that also contains fields, the switch objects should be logged with their parent
         referencedObject = None
@@ -493,7 +505,7 @@ def createZeekObjects(scopes, customFieldTypes, bitfields, allObjects, allSwitch
                 elif field.type in utils.spicyToZeek:
                     _processSpicyType(zeekFields, zeekField, object, field)
                 elif field.type == "switch":
-                    _processSwitchType(zeekFields, linkingFields, object, field, scope, scopes, allObjects, allSwitches)
+                    _processSwitchType(zeekFields, linkingFields, object, field, scope, scopes, allObjects, allSwitches, zeekObjects, zeekMainFileObject)
                 elif field.type == "bits":
                     _processBitsType(zeekFields, object, field, bitfields, scope, generalScope)
                 elif field.type == "object":
