@@ -226,15 +226,24 @@ def processObjectsFile(file, scope):
             if "notes" in field:
                 newField.notes = field["notes"]
             if "input" in field:
-                newInput = inputs.Input(field["input"]["source"])
+                minus = ""
+                if "minus" in field["input"]:
+                    minus = field["input"]["minus"]
+                newInput = inputs.Input(field["input"]["source"], minus)
                 newField.addInput(newInput)
             if "inputs" in field:
                 for input in field["inputs"]:
-                    newInput = inputs.Input(input["source"])
+                    minus = ""
+                    if "minus" in input:
+                        minus = input["minus"]
+                    newInput = inputs.Input(input["source"], minus)
                     newField.addInput(newInput)
             if "additionalInputs" in field:
                 for input in field["additionalInputs"]:
-                    newInput = inputs.Input(input["source"])
+                    minus = ""
+                    if "minus" in input:
+                        minus = input["minus"]
+                    newInput = inputs.Input(input["source"], minus)
                     newField.addInput(newInput)
             if "endianness" in field:
                 newField.endianness = field["endianness"]
@@ -263,7 +272,10 @@ def processSwitchFile(file):
                 newSwitchAction.size = option["action"]["size"]
             if "inputs" in option["action"]:
                 for input in option["action"]["inputs"]:
-                    newInput = inputs.Input(input["source"])
+                    minus = ""
+                    if "minus" in input:
+                        minus = input["minus"]
+                    newInput = inputs.Input(input["source"], minus)
                     newSwitchAction.addInput(newInput)
             if "elementType" in option["action"]:
                 newSwitchAction.elementType = option["action"]["elementType"]
@@ -278,7 +290,10 @@ def processSwitchFile(file):
                 defaultAction.size = tempAction["size"]
             if "inputs" in tempAction:
                 for input in tempAction["inputs"]:
-                    newInput = inputs.Input(input["source"])
+                    minus = ""
+                    if "minus" in input:
+                        minus = input["minus"]
+                    newInput = inputs.Input(input["source"], minus)
                     defaultAction.addInput(newInput)
             if "elementType" in tempAction:
                 defaultAction.elementType = tempAction["elementType"]

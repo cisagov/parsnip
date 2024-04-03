@@ -131,7 +131,7 @@ def _returnSpicyObjectType(itemType, enums, scope, referenceType, inputs):
     elif 0 < len(inputs):
         outputString += "("
         for index, value in enumerate(inputs):
-            outputString += value.source
+            outputString += value.getString()
             if index < len(inputs) - 1:
                 outputString += ", "
         outputString += ")"
@@ -190,7 +190,7 @@ def _returnListType(itemName, elementType, referenceType, scope, size, inputs, c
     
 def _returnSwitchType(scope, referenceType, inputs, customTypes, bitfields, switches, enums):
     reference = switches[scope][referenceType]
-    outputString = "switch({0}) {{\n".format(inputs[0].source)
+    outputString = "switch({0}) {{\n".format(inputs[0].getString())
     for option in reference.options:
         if option.action.type != "void":
             preString = ""
