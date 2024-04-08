@@ -348,6 +348,8 @@ def _processSwitchAction(type, action, zeekFields, object, linkingFields, scope,
         _processBasicType(zeekFields, zeekField, object, action.name, utils.spicyToZeek[action.type])
     elif action.type == "list":
         _processListType(zeekFields, action, linkingFields, object, scope, scopes, allObjects, zeekObjects, zeekMainFileObject)
+    elif action.type == "void":
+        pass
     else:
         print("Invalid switch option type: {} in {}".format(action.type, object.name))
     

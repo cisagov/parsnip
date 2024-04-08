@@ -579,7 +579,7 @@ def _writeCoreZeekFiles(configuration, scriptsFolder, zeekMainFileObject, allEnu
 
     coreFiles.append("main.zeek")
     data = {
-        "protocolName": utils.PROTOCOL_NAME,
+        "protocolName": utils.PROTOCOL_NAME.upper(),
         "mainContents": zeekMainFileObject.generateMainFile(utils.USES_LAYER_2, configuration.ethernetProtocolNumber),
         "loggingFunctions": zeekMainFileObject.addLoggingFunction()
     }

@@ -281,15 +281,18 @@ class Object:
                 break
         return "{}{}${} = {}::{}[{}{}];\n".format(utils.getTabString(tabSize), localVariableName, field.zeekName, enumScope, utils.commandNameToConst(field.referenceType).upper(), processingName, field.name)
         
-    def _makeEventBackendForList(self, field, processingName, tabSize, localVariableName):
+    def _makeEventBackendForList(self, field, processingName, tabSize, localVariableName, includeConditional = True):
         # TODO: Avoid duplication on conditional lists
         convertingFunctionString = ""
         if field.elementType in utils.spicyToZeek:
             actionName = field.name
-            argument = "{}?${}".format(processingName[:-1], actionName)
-            convertingFunctionString += "{}if ({}){{\n".format(utils.getTabString(tabSize), argument)
-            convertingFunctionString += "{}{}${} = {}{};\n".format(utils.getTabString(tabSize + 1), localVariableName, field.zeekName, processingName, field.name)
-            convertingFunctionString += "{}}}\n".format(utils.getTabString(tabSize))
+            if includeConditional:
+                argument = "{}?${}".format(processingName[:-1], actionName)
+                convertingFunctionString += "{}if ({}){{\n".format(utils.getTabString(tabSize), argument)
+                convertingFunctionString += "{}{}${} = {}{};\n".format(utils.getTabString(tabSize + 1), localVariableName, field.zeekName, processingName, field.name)
+                convertingFunctionString += "{}}}\n".format(utils.getTabString(tabSize))
+            else:
+               convertingFunctionString += "{}{}${} = {}{};\n".format(utils.getTabString(tabSize), localVariableName, field.zeekName, processingName, field.name)
             return convertingFunctionString
         if field.elementType == "object":
             return ""
@@ -327,7 +330,7 @@ class Object:
             convertingFunctionString += "{}{}${} = {}{};\n".format(utils.getTabString(tabSize + 1), localVariableName, field.zeekName, processingName, actionName)
             convertingFunctionString += "{}}}\n".format(utils.getTabString(tabSize))
         elif action.type == "list":
-            convertingFunctionString += self._makeEventBackendForList(action, processingName, tabSize + 1, localVariableName)
+            convertingFunctionString += self._makeEventBackendForList(action, processingName, tabSize, localVariableName)
         elif action.type == "void":
             pass
         else:
@@ -384,7 +387,7 @@ class Object:
             elif field.type == "switch":
                 convertingFunctionString += self._makeEventBackendForSwitch(field, processingName, moduleName, allEnums, allBitfields, allObjects, allSwitches, scopes, localVariableName, tabSize, childOverride, tabSize)
             elif field.type == "list":
-                convertingFunctionString += self._makeEventBackendForList(field, processingName, tabSize, localVariableName)
+                convertingFunctionString += self._makeEventBackendForList(field, processingName, tabSize, localVariableName, False)
             else: 
                 convertingFunctionString += "{}{}${} = {}{};\n".format(utils.getTabString(tabSize), localVariableName, field.zeekName, processingName, field.name)
             convertingFunctionString += self._finishOnConditionals(field, specificExportOverride, tabSize)
