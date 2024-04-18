@@ -32,6 +32,9 @@ class SpicyEvent:
         #     basicEvent += "{}{},\n".format(utils.SINGLE_TAB, link.name)
         for item in self.arguments:
             scopedArguments.append(item)
+        for link in self.linkFields:
+            #basicEvent += "{}self.{},\n".format(utils.SINGLE_TAB, link.name)
+            scopedArguments.append(link.name)
         if self.eventFields != []:
             for field in self.eventFields:
                 if field.type == "bits":
@@ -43,8 +46,6 @@ class SpicyEvent:
                     scopedArguments.append("self.{}".format(field.name))
         else:
             scopedArguments.append("self".format(self.scope, self.name))
-        for link in self.linkFields:
-            basicEvent += "{}self.{},\n".format(utils.SINGLE_TAB, link.name)
         for argument in scopedArguments:
             if argument != scopedArguments[-1]:
                 basicEvent += "{}{},\n".format(utils.SINGLE_TAB, argument)
@@ -57,7 +58,7 @@ class SpicyEvent:
         if utils.USES_LAYER_2:
             eventName += "event {}::{}Evt (".format(self.scope, self.name)
         else:
-            eventName += "event {}::{}Evt (c: connection, is_orig: bool,".format(self.scope, self.name)
+            eventName += "event {}::{}Evt (c: connection, is_orig: bool, ".format(self.scope, self.name)
         for link in self.linkFields:
             eventName += "{}: string, ".format(link.name)
         if self.eventFields != []:
