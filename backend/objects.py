@@ -392,6 +392,6 @@ class Object:
                 convertingFunctionString += "{}{}${} = {}{};\n".format(utils.getTabString(tabSize), localVariableName, field.zeekName, processingName, field.name)
             convertingFunctionString += self._finishOnConditionals(field, specificExportOverride, tabSize)
         if includeNonFields:
-            convertingFunctionString += self._finishForNonFields(localVariableName, tabSize, zeekStructureName)
+            convertingFunctionString += self._finishForNonFields(localVariableName, startingTabSize, zeekStructureName)
         return convertingFunctionString
  
