@@ -28,7 +28,7 @@ def _createSwitchStructureIfNecessary():
 def _createEnumStructureIfNecessary():
     _createStructureIfNecessary()
     if session["Structures"].get("Enums") is None:
-        session["Structures"]["Enums"] = []    
+        session["Structures"]["Enums"] = []
         
 def _createBitfieldStructureIfNecessary():
     _createStructureIfNecessary()
@@ -303,11 +303,13 @@ def addUserTypeToSession(userTypeForm):
     entry["interpretingFunction"] = userTypeForm.interpretingFunction.data
     entry["returnType"] = userTypeForm.returnType.data
     session["CustomFieldTypes"].append(entry)
+    session.modified = True
     
 def removeUserTypeFromSession(index):
     if "CustomFieldTypes" in session:
         if index < len(session["CustomFieldTypes"]):
             session["CustomFieldTypes"].pop(index)
+            session.modified = True
             
 def addPortToSession(portForm):
     _createPortsIfNecessary()
@@ -315,11 +317,13 @@ def addPortToSession(portForm):
     entry["protocol"] = portForm.protocolName.data
     entry["port"] = portForm.portNumber.data
     session["Ports"].append(entry)
+    session.modified = True
     
 def removePortFromSession(index):
     if "Ports" in session:
         if index < len(session["Ports"]):
             session["Ports"].pop(index)
+            session.modified = True
 
 def addBitfieldToStructure(bitfieldForm):
     _createBitfieldStructureIfNecessary()
@@ -347,11 +351,13 @@ def addBitfieldToStructure(bitfieldForm):
         fieldEntry["bits"] = bits
         entry["fields"].append(fieldEntry)
     session["Structures"]["Bitfields"].append(entry)
+    session.modified = True
     
 def removeBitfieldFromStructure(index):
     if "Structures" in session and "Bitfields" in session["Structures"]:
         if index < len(session["Structures"]["Bitfields"]):
             session["Structures"]["Bitfields"].pop(index)
+            session.modified = True
     
 def addEnumToStructure(enumForm):
     _createEnumStructureIfNecessary()
@@ -374,11 +380,13 @@ def addEnumToStructure(enumForm):
             fieldEntry["notes"] = field.fieldNote.data
         entry["fields"].append(fieldEntry)
     session["Structures"]["Enums"].append(entry)
+    session.modified = True
     
 def removeEnumFromStructure(index):
     if "Structures" in session and "Enums" in session["Structures"]:
         if index < len(session["Structures"]["Enums"]):
             session["Structures"]["Enums"].pop(index)
+            session.modified = True
             
 def addObjectToStructure(objectForm):
     _createObjectStructureIfNecessary()
@@ -400,11 +408,13 @@ def addObjectToStructure(objectForm):
     # Add empty fields array for now
     entry["fields"] = []
     session["Structures"]["Objects"].append(entry)
+    session.modified = True
             
 def removeObjectFromStructure(index):
     if "Structures" in session and "Objects" in session["Structures"]:
         if index < len(session["Structures"]["Objects"]):
             session["Structures"]["Objects"].pop(index)
+            session.modified = True
             
 def addFieldToObject(objectIndex, fieldForm):
     if "Structures" in session and "Objects" in session["Structures"]:
@@ -467,12 +477,14 @@ def addFieldToObject(objectIndex, fieldForm):
                     entry["inputs"] = inputs
             print(entry)
             session["Structures"]["Objects"][objectIndex]["fields"].append(entry)
+            session.modified = True
     
 def removeFieldFromObject(objectIndex, fieldIndex):
     if "Structures" in session and "Objects" in session["Structures"]:
         if objectIndex < len(session["Structures"]["Objects"]) and \
            fieldIndex < len(session["Structures"]["Objects"][objectIndex]["fields"]):
             session["Structures"]["Objects"][objectIndex]["fields"].pop(fieldIndex)
+            session.modified = True
             
 def addSwitchToStructure(switchForm):
     _createSwitchStructureIfNecessary()
@@ -490,11 +502,13 @@ def addSwitchToStructure(switchForm):
             options.append(_processOptionForm(option))
     entry["options"] = options
     session["Structures"]["Switches"].append(entry)
+    session.modified = True
 
 def removeSwitchFromStructure(index):
     if "Structures" in session and "Switches" in session["Structures"]:
         if index < len(session["Structures"]["Switches"]):
             session["Structures"]["Switches"].pop(index)
+            session.modified = True
         
 ################################################################################
 # Functions to check
