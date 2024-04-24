@@ -34,7 +34,7 @@ class SpicyEvent:
             scopedArguments.append(item)
         for link in self.linkFields:
             #basicEvent += "{}self.{},\n".format(utils.SINGLE_TAB, link.name)
-            scopedArguments.append(link.name)
+            scopedArguments.append("self.{}".format(link.name))
         if self.eventFields != []:
             for field in self.eventFields:
                 if field.type == "bits":
