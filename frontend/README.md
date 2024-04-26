@@ -2,7 +2,7 @@
 
 ## Assumptions
 * Docker and Bash (/bin/bash) already installed
-* Current directory of the terminal is the root directory of repository
+* Current directory of the terminal is the frontend directory of this repository
 
 ## Steps (in the terminal)
 1. Run `./start_webServer.sh`
