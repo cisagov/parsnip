@@ -558,7 +558,7 @@ def _writeCoreZeekFiles(configuration, scriptsFolder, zeekMainFileObject, allEnu
     processingString = ""
     enumString = ""
     if configuration.signatureFile is not None:
-        sigsString = "@load-sigs dpd.sig\n"
+        sigsString = "@load-sigs ./dpd.sig\n"
     for scope in configuration.scopes:
         normalScope = utils.normalizedScope(scope, "")
 
