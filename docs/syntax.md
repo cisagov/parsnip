@@ -1,8 +1,8 @@
 # Introduction
 
-Parsnip is an intermediary language for the spicy framework that provides an easier approch to developing zeek protocol parsers.
+Parsnip is an intermediary language for the Spicy framework that provides an easier approch to developing Zeek protocol parsers.
 
-Parsnip consists of a frontend graphical user interface (GUI) and a backend processor. The frontend GUI allows the user to enter the information needed to create the Parsnip files without working directly with the JSON files used by Parsnip. The frontend supports JSON snapshot files that maintain a record of the data entered. The backend takes the JSON Parsnip files and generates spicy and zeek script files that can be used to build a parser in Zeek.
+Parsnip consists of a frontend graphical user interface (GUI) and a backend processor. The frontend GUI allows the user to enter the information needed to create the Parsnip files without working directly with the JSON files used by Parsnip. The frontend supports JSON snapshot files that maintain a record of the data entered. The backend takes the JSON Parsnip files and generates Spicy and Zeek script files that can be used to build a parser in Zeek.
 
 # Parts of a Parser Definition
 Notes:
@@ -27,7 +27,7 @@ Parsnip Example:
 ```
 
 #### Protocol Name
-The name of the protocol. It should only consist of capital letters and underscores (e.g., HART_IP).
+The name of the protocol. It should only consist of letters and underscores (e.g., HART_IP). 
 
 * Frontend Information
     - Parser Configuration -> General Parser Configuration -> Protocol Name
@@ -42,7 +42,7 @@ Parsnip Example:
 ```
 
 #### Parser Entry Point
-The [object](#structures_object) that serves as the initial entry point for parsing the protocol.
+The [object](#structures_object) that serves as the initial entry point for parsing the protocol. In other words, the object that matches the start of a protocol packet.
 
 * Frontend Information
     - Parser Configuration -> General Parser Configuration -> Parser Entry Point
@@ -74,7 +74,7 @@ Parsnip Example:
 ```
 
 #### Ethernet Protocol Number
-If the protocol uses Ethernet instead of UDP or TCP, then this element specifies the Ethernet Protocol Number that specifies this protocol.
+If the protocol uses Ethernet instead of UDP or TCP, then this element specifies the Ethernet Protocol Number that is used by this protocol.
 
 * Frontend Information
     - Currently not implemented
@@ -203,7 +203,7 @@ namespace ETHERCAT_CONVERSION
     }
 }
 ```
-
+Note: The generateID() function is required in the conversion file.
 #### Signature File
 Base64 encoded file contents that will be used to generate the dpd.sig Zeek file.
 
@@ -429,7 +429,7 @@ Parsnip Examples:
 ```
 
 ##### Conditional Field
-Sometimes a field might exist conditionally based on if a flag is set or if a value exists. In the event where this conditional statement can be represented by a single if statement, we've added an optional "conditional" variable that can be placed in any command field.
+Sometimes a field might exist conditionally based on if a flag is set or if a value exists. In the event where this conditional statement can be represented by a single if statement, Parsnip has an optional "conditional" variable that can be placed in any command field.
 
 The "conditional" variable is set to one of the following:
 
@@ -536,7 +536,6 @@ Mandatory Values:
 * "name": The name of the enum, used to reference the enum
     - Must only contain upper and lower case letters, underscores, and numbers
     - May not begin with a number
-    - Convention is Pascal Case (i.e., ThisIsMyName)
 * "size": The number of bits used to represent the values
 * "fields": An array of field (value) structures. See below for more information.
 
@@ -550,7 +549,9 @@ An array of key value pairs used in the enumeration as well as some extra detail
 
 * "name": The key used in the enumeration
     - Convention is all caps with underscores between words (i.e., ENUM_VALUE)
-* "loggingValue": The information that will appear for logging as the protocol gets parsed
+    - Spaces are not allowed
+    - 
+* "loggingValue": The information that will appear for logging as the protocol gets parsed. This can be any valid string
 * "value": The integer value that the name is paired with
 * "notes" (optional): Notes that might assist anyone working on the protocol
 
@@ -841,7 +842,7 @@ Mandatory Values:
 Optional Values:
 
 * "additionalDependsOn": An array of additional dependencies. See [Dependency Information](#dependency-information) for more information on dependency information.
-* "default": The default action to take if an option is not triggered. This defaults to a "void" action of do nothing. The contents are the same as the contents of an action in an object as outlined below. Note: this is not currently implemented in the front end.
+* "default": The default action to take if an option is not triggered. This defaults to a "void" action of do nothing. The contents are the same as the contents of an action in an object as outlined below. Note: this is not currently implemented in the frontend.
 
 Options:
 
@@ -1058,7 +1059,7 @@ Parsnip Example:
 }
 ```
 
-While defining fields in an object, you can set a field to be a bitfield by setting the "type" to "bits" and adding the variables "referenceType" and "scope" which will be set to the same name and scope as the bitfield structure.
+While defining fields in an object, users can set a field to be a bitfield by setting the "type" to "bits" and adding the variables "referenceType" and "scope" which will be set to the same name and scope as the bitfield structure.
 
 ### Enumerations
 
@@ -1077,7 +1078,7 @@ Parsnip Example:
 
 ```
 
-While defining fields in an object, you can set a field to be an enumeration by setting the "type" to "enum" and adding the variables "referenceType" and "scope" which will be set to the same name and scope as the enum structure.
+While defining fields in an object, users can set a field to be an enumeration by setting the "type" to "enum" and adding the variables "referenceType" and "scope" which will be set to the same name and scope as the enum structure.
 
 ### List
 Lists are arrays of items and are used to store a set of items. Lists require "[until](#until)" information to be provided to specify when to stop processing items.
@@ -1129,7 +1130,7 @@ Parsnip Examples:
 }
 ```
 
-While defining fields in an object, you can set a field to be an object by setting the "type" to "object" and adding the variables "referenceType" and "scope" which will be set to the same name and scope as the object structure.
+While defining fields in an object, users can set a field to be an object by setting the "type" to "object" and adding the variables "referenceType" and "scope" which will be set to the same name and scope as the object structure.
 
 ### Switches
 
@@ -1156,6 +1157,6 @@ Parsnip Example:
 }
 ```
 
-While defining the field, you can set a field to be a switch by setting the "type" to "switch" and adding the variable "referenceType" which will be set to the same name as the switch structure. The "input" field will contain a "source" variable that is set to the field that switch cases are based on. If any other variables are needed for the individual cases to function you can pass those into the switch using the "additionalInputs" array with each member containing a similar source variable. For more on passing/referencing values look [here](#providing-input).
+While defining the field, users can set a field to be a switch by setting the "type" to "switch" and adding the variable "referenceType" which will be set to the same name as the switch structure. The "input" field will contain a "source" variable that is set to the field that switch cases are based on. If any other variables are needed for the individual cases to function you can pass those into the switch using the "additionalInputs" array with each member containing a similar source variable. For more on passing/referencing values look [here](#providing-input).
 
 Copyright 2024, Battelle Energy Alliance, LLC All Rights Reserved
