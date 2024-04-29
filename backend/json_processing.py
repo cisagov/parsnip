@@ -492,7 +492,6 @@ def _processListType(zeekFields, field, linkingFields, object, scope, scopes, al
         _processLinkingField(referencedObject, linkingFields, zeekObjects, objectScope, zeekMainFileObject)
         
 def _linkScope(scope, zeekObjects):
-    # I know this is terrible practice but my graph theory sucks and I want this to work
     if scope in utils.scopesHaveCrossScopeLinks:
         zeekMainObject = zeekObjects[utils.normalizedScope(scope, "object")][scope]
         for item in utils.scopesHaveCrossScopeLinks[scope]:
