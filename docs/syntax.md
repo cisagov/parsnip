@@ -1,8 +1,8 @@
 # Introduction
 
-Parsnip is an intermediary language for the spicy framework that provides an easier approch to developing zeek protocol parsers.
+Parsnip is an intermediary language for the Spicy framework that provides an easier approch to developing Zeek protocol parsers.
 
-Parsnip consists of a frontend graphical user interface (GUI) and a backend processor. The frontend GUI allows the user to enter the information needed to create the Parsnip files without working directly with the JSON files used by Parsnip. The frontend supports JSON snapshot files that maintain a record of the data entered. The backend takes the JSON Parsnip files and generates spicy and zeek script files that can be used to build a parser in Zeek.
+Parsnip consists of a frontend graphical user interface (GUI) and a backend processor. The frontend GUI allows the user to enter the information needed to create the Parsnip files without working directly with the JSON files used by Parsnip. The frontend supports JSON snapshot files that maintain a record of the data entered. The backend takes the JSON Parsnip files and generates Spicy and Zeek script files that can be used to build a parser in Zeek.
 
 # Parts of a Parser Definition
 Notes:
@@ -27,7 +27,7 @@ Parsnip Example:
 ```
 
 #### Protocol Name
-The name of the protocol. It should only consist of capital letters and underscores (e.g., HART_IP).
+The name of the protocol. It should only consist of letters and underscores (e.g., HART_IP). 
 
 * Frontend Information
     - Parser Configuration -> General Parser Configuration -> Protocol Name
@@ -42,7 +42,7 @@ Parsnip Example:
 ```
 
 #### Parser Entry Point
-The [object](#structures_object) that serves as the initial entry point for parsing the protocol.
+The [object](#structures_object) that serves as the initial entry point for parsing the protocol. In other words, the object that matches the start of a protocol packet.
 
 * Frontend Information
     - Parser Configuration -> General Parser Configuration -> Parser Entry Point
@@ -74,7 +74,7 @@ Parsnip Example:
 ```
 
 #### Ethernet Protocol Number
-If the protocol uses Ethernet instead of UDP or TCP, then this element specifies the Ethernet Protocol Number that specifies this protocol.
+If the protocol uses Ethernet instead of UDP or TCP, then this element specifies the Ethernet Protocol Number that is used by this protocol.
 
 * Frontend Information
     - Currently not implemented
@@ -203,7 +203,7 @@ namespace ETHERCAT_CONVERSION
     }
 }
 ```
-
+Note: The generateID() function is required in the conversion file.
 #### Signature File
 Base64 encoded file contents that will be used to generate the dpd.sig Zeek file.
 
@@ -217,6 +217,16 @@ Base64 encoded file contents that will be used to generate the dpd.sig Zeek file
 Parsnip Example:
 ```JSON
 "signatureFile": "IyBGaXggTWUhCnNpZ25hdHVyZSBkcGRfcGFyc2VyX3RjcCB7CiAgaXAtcHJvdG8gPT0gdGNwCiAgcGF5bG9hZCAvXltceDAwLVx4ZmZdezJ9LwogIGVuYWJsZSAiUEFSU0VSX1RDUCIKfQ=="
+```
+
+File Contents Example:
+```
+# Fix Me!
+signature dpd_parser_tcp {
+  ip-proto == tcp
+  payload /^[\x00-\xff]{2}/
+  enable "PARSER_TCP"
+}
 ```
 
 ### Protocol Ports
@@ -304,18 +314,17 @@ Structures contain all the objects necessary to fully construct and parse a prot
     - Each file contains an array of objects representing the associated structures.
 
 ### <a name="dependency-information"></a>Dependency Information
-Dependencies are applicable to objects and switches. ## TODO: DEFINE DEPENDENCIES ## The variables in each dependency are:
+Dependencies are applicable to objects and switches. A dependency of an object or switch is a value that the structure depends on to be instantiated, but is not parsed by the structure itself. The variables in each dependency are:
 
 * "name": The name of dependency that allows it to be referenced within the structure
     - Must only contain upper and lower case letters, underscores, and numbers
     - May not begin with a number
     - Convention is camel case (i.e., thisIsMyValue)
-* "type": The data type of the field (primitive or structure type)
+* "type": The [data type](#data-types) of the field (basic or structure type)
 * One of:
-#TODO: Link primative types to list of possisble types. Fix throughout
-    - "size": If the type is primitive (i.e. it doesn't require a referenceType to a structure), then this is the size of the item in bits.
+    - "size": If the type is a basic type (i.e. it doesn't require a referenceType to a structure), then this is the size of the item in bits.
     - Combination:
-        * "refernceType": If the type requires a reference to a structure, then this is used instead of size.
+        * "referenceType": If the type requires a reference to a structure, then this is used instead of size.
         * "scope": The scope of the structure
 * "description" (optional): Description of the field
 * "notes" (optional): Additional notes about the field
@@ -352,7 +361,7 @@ The variables in a field are:
 * "description": Used to describe what the field is used for in the context of the command.
 * "type": Defines the type of data carried in the field that is expected to be parsed. More details in [Data Types](#data-types).
 * One of:
-    - "size": If the type is primative (i.e. it doesn't require a referenceType to a structure) then this is the size of the field in bits. It is best practice to the field size a multiple of 8. If two fields meet outside of a multiple of 8 then try using a bitfield described below.
+    - "size": If the type is basic (i.e. it doesn't require a referenceType to a structure) then this is the size of the field in bits. It is best practice to have the field size be a multiple of 8. If two fields meet outside of a multiple of 8 then try using a bitfield described below.
     - Combination:
         * "referenceType": If the type requires a reference to a structure then this is used instead of size.
         * "elementType": Required if the type is "list". Defines the data type of the list elements.
@@ -380,7 +389,7 @@ Parsnip Examples:
 
 #### Extended Field Options
 ##### <a name="providing-input"></a>Providing Input
-Sometimes referenced types require input. If the reference type is an "object", inputs are passed using the "inputs" value. If the reference type is a "switch", the main input is passed using the "input" value and additional values are passed in using the "additionalInputs" array value. The order of the inputs must match the order of the dependencies. Values referring to previously defined fields are preceded by "self."
+Sometimes referenced types require input. If the reference type is an "object", inputs are passed using the "inputs" value. If the reference type is a "switch", the main input is passed using the "input" value and additional values are passed in using the "additionalInputs" array value. The order of the inputs must match the order of the dependencies. Values referring to previously defined fields are preceded by "self." An input may contain an optional "minus" value which contains a constant value to be subtracted from the input value. Note, the "minus" value is not currently supported in the frontend.
 
 Parsnip Examples:
 ```JSON
@@ -409,7 +418,8 @@ Parsnip Examples:
     "referenceType": "ReadAdditionalDeviceStatusContents",
     "inputs": [
         {
-            "source": "byteCount"
+            "source": "self.byteCount",
+            "minus": 2
         },
         {
             "source": "messageType"
@@ -419,7 +429,7 @@ Parsnip Examples:
 ```
 
 ##### Conditional Field
-Sometimes a field might exist conditionally based on if a flag is set or if a value exists. In the event where this conditional statement can be represented by a single if statement, we've added an optional "conditional" variable that can be placed in any command field.
+Sometimes a field might exist conditionally based on if a flag is set or if a value exists. In the event where this conditional statement can be represented by a single if statement, Parsnip has an optional "conditional" variable that can be placed in any command field.
 
 The "conditional" variable is set to one of the following:
 
@@ -427,8 +437,10 @@ The "conditional" variable is set to one of the following:
     - The "indicator" value refers to the field which contains the value to check against.
     - The "operator" value refers to one of the options provided in the table below.
     - The "value" value stores the value to compare against the indicator. It must match the type of the indicator value.
-* An "and" array of objects. Note, not currently implemented in the frontend.
-* An "or" array of objects. Note, not currently implemented in the frontend.
+* An "and" array of objects.
+    - Note, this feature is not currently implemented in the frontend.
+* An "or" array of objects.
+    - Note, this feature is not currently implemented in the frontend.
 
     | Operator | Name                  |
     |----------|-----------------------|
@@ -479,7 +491,7 @@ Parsnip Examples:
 }
 ```
 
-##### Until Fields
+##### <a name="until"></a>Until Fields
 The "until" variable is a field variable for list types that contains
 
 * "conditionType": The type of condition (dictates which other values exist)
@@ -488,6 +500,7 @@ The "until" variable is a field variable for list types that contains
         * "COUNT": A specific number of values will be read
 * "indicator" (required if using "COUNT"): location that holds the number of elements to read
 * "minus" (optional if using "COUNT"): Subtract a constant number of entries from the indicator
+    - Note: "minus" is not currently supported in the frontend.
 
 Parsnip Examples:
 ```JSON
@@ -523,7 +536,6 @@ Mandatory Values:
 * "name": The name of the enum, used to reference the enum
     - Must only contain upper and lower case letters, underscores, and numbers
     - May not begin with a number
-    - Convention is Pascal Case (i.e., ThisIsMyName)
 * "size": The number of bits used to represent the values
 * "fields": An array of field (value) structures. See below for more information.
 
@@ -537,7 +549,9 @@ An array of key value pairs used in the enumeration as well as some extra detail
 
 * "name": The key used in the enumeration
     - Convention is all caps with underscores between words (i.e., ENUM_VALUE)
-* "loggingValue": The information that will appear for logging as the protocol gets parsed
+    - Spaces are not allowed
+    - 
+* "loggingValue": The information that will appear for logging as the protocol gets parsed. This can be any valid string
 * "value": The integer value that the name is paired with
 * "notes" (optional): Notes that might assist anyone working on the protocol
 
@@ -828,7 +842,7 @@ Mandatory Values:
 Optional Values:
 
 * "additionalDependsOn": An array of additional dependencies. See [Dependency Information](#dependency-information) for more information on dependency information.
-* "default": The default action to take if an option is not triggered. This defaults to a "void" action of do nothing. The contents are the same as the contents of an action in an object as outlined below. Note: this is not currently implemented in the front end.
+* "default": The default action to take if an option is not triggered. This defaults to a "void" action of do nothing. The contents are the same as the contents of an action in an object as outlined below. Note: this is not currently implemented in the frontend.
 
 Options:
 
@@ -913,7 +927,7 @@ Parsnip Example:
 ```
 
 # <a name="data-types"></a>Data Types
-## Basic Types TODO: Primative or Basic Type? Fix throughout. Pick one & stick to it
+## Basic Types
 
 Parsnip supports:
 
@@ -924,24 +938,6 @@ Parsnip supports:
 * bytes
 * float values (float)
 * void
-
-<!--
-### Boolean Values
-
-Boolean Values take the first bit of any sized field to determine whether the value is true or false. To setup a boolean field set the `type` as `bool`.
-
-Parsnip Example:
-```JSON
-# bool Field
-
-{
-    "name": "Name",
-    "description": "Description",
-    "type": "bool",
-    "size": 8
-}
-```
--->
 
 ### Bytes
 
@@ -1040,14 +1036,14 @@ Likewise, for a IPv6 field, set "type" as "addr" and "size" as "64" or "128".
     "size": 64
 }
 ```
-## Parsnip Types - TODO:Clarify that these are reference to other pre-defined parsing types
+## Parsnip Structure Types
 
 * enumerations (enum)
 * bitfield (bits)
 * switches (switch)
 * objects (object)
 
-### Bitfields   
+### Bitfields
 
 A bitfield is a type where the values are dependent on a range of bits or individual bits rather than a number of bytes.
 
@@ -1063,7 +1059,7 @@ Parsnip Example:
 }
 ```
 
-While defining fields in an object, you can set a field to be a bitfield by setting the "type" to "bits" and adding the variables "referenceType" and "scope" which will be set to the same name and scope as the bitfield structure.
+While defining fields in an object, users can set a field to be a bitfield by setting the "type" to "bits" and adding the variables "referenceType" and "scope" which will be set to the same name and scope as the bitfield structure.
 
 ### Enumerations
 
@@ -1082,10 +1078,10 @@ Parsnip Example:
 
 ```
 
-While defining fields in an object, you can set a field to be an enumeration by setting the "type" to "enum" and adding the variables "referenceType" and "scope" which will be set to the same name and scope as the enum structure.
+While defining fields in an object, users can set a field to be an enumeration by setting the "type" to "enum" and adding the variables "referenceType" and "scope" which will be set to the same name and scope as the enum structure.
 
 ### List
-Lists are arrays of items and are used to store a set of items. Lists require "until" information to be provided to specify when to stop processing items.
+Lists are arrays of items and are used to store a set of items. Lists require "[until](#until)" information to be provided to specify when to stop processing items.
 
 Parsnip Example:
 ```JSON
@@ -1134,7 +1130,7 @@ Parsnip Examples:
 }
 ```
 
-While defining fields in an object, you can set a field to be an object by setting the "type" to "object" and adding the variables "referenceType" and "scope" which will be set to the same name and scope as the object structure.
+While defining fields in an object, users can set a field to be an object by setting the "type" to "object" and adding the variables "referenceType" and "scope" which will be set to the same name and scope as the object structure.
 
 ### Switches
 
@@ -1161,6 +1157,6 @@ Parsnip Example:
 }
 ```
 
-While defining the field, you can set a field to be a switch by setting the "type" to "switch" and adding the variable "referenceType" which will be set to the same name as the switch structure. The "input" field will contain a "source" variable that is set to the field that switch cases are based on. If any other variables are needed for the individual cases to function you can pass those into the switch using the "additionalInputs" array with each member containing a similar source variable. For more on passing/referencing values look [here](#providing-input).
+While defining the field, users can set a field to be a switch by setting the "type" to "switch" and adding the variable "referenceType" which will be set to the same name as the switch structure. The "input" field will contain a "source" variable that is set to the field that switch cases are based on. If any other variables are needed for the individual cases to function you can pass those into the switch using the "additionalInputs" array with each member containing a similar source variable. For more on passing/referencing values look [here](#providing-input).
 
 Copyright 2024, Battelle Energy Alliance, LLC All Rights Reserved

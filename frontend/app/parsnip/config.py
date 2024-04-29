@@ -1,7 +1,10 @@
 # Copyright 2024, Battelle Energy Alliance, LLC, ALL RIGHTS RESERVED
 
+import os
+import secrets
+
 class Config:
-    SECRET_KEY = '4a5e281c1993a110e86cddf056c7a182'
+    SECRET_KEY = os.environ.get("SECRET_KEY", secrets.token_hex(16))
     STATIC_FOLDER = 'web/static'
     STATIC_URL_PATH = ''
     TEMPLATE_FOLDER = 'web/templates'

@@ -217,11 +217,11 @@ def checkForMissingDependencies(snapshot, returnValue):
                             returnValue.append({"type": "Error",
                                 "title": "Scope Confusion",
                                 "content": "Dependency {0}.{1} for Item {2}.{3}.{4} exists in multiple scopes: {5}".format(dependencyType, dependencyName, structure, scope, objectName, "'" + ("', ".join(scopes)) + "'")})
-                    #else:
+                    else:
                         # No idea...
-                        #returnValue.append({"type": "Error",
-                        #    "title": "No Dependency",
-                        #    "content": "Dependency {0}.{1} does not exist for Item {2}.{3}.{4}".format(dependencyType, dependencyName, structure, scope, objectName)})
+                        returnValue.append({"type": "Error",
+                            "title": "No Dependency",
+                            "content": "Dependency {0}.{1} does not exist for Item {2}.{3}.{4}".format(dependencyType, dependencyName, structure, scope, objectName)})
 
     #print(languageTypes)
     #print(bitfieldSpecificTypes)
