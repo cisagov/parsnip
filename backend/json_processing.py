@@ -463,7 +463,7 @@ def _processObjectType(field, linkingFields, object, allObjects, generalScope, s
         referencedObject.addLinkField(linkEndObjectField)
         object.addExcludedField(field.name)  
         object.needsSpecificExport = True
-        # TODO: Figure out what is going on here
+        # TODO: Double check this function for side effects
         _processLinkingField(referencedObject, linkingFields, zeekObjects, scope, zeekMainFileObject)
         field.zeekName = utils.commandNameToConst(object.name).lower() + "_" +  utils.commandNameToConst(field.name).lower()
         
