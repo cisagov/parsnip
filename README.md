@@ -27,7 +27,7 @@ Please refer to [docs/parsnip.md](docs/parsnip.md) for more information on using
 ## Known Limitations
 * Package creation may have some file permission issues. If a package does not install, check that the files in the testing/scripts directory are executable.
 * Choices actions can currently only point to objects, not other types such as integers.
-* Frontend functionality is limited. Specifically conditionals, layer 2 parsing and the minus keyword need to be implemented in the intermediate language.
+* Frontend functionality is limited. Specifically AND and OR conditionals, layer 2 parsing and the minus keyword need to be implemented in the intermediate language.
 * Self-recursive types with multiple switches are not properly handled. This will be fixed in a later release.
 * Zeek btest in the created package is limited to a basic availability test. Functionality for expanding btests has not been added.
 
