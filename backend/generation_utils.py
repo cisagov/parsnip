@@ -46,7 +46,11 @@ def createAndUseGraphInformation(configuration, objects, switches, bitfields, en
     # Use the graph information
     ############################################################################
     printGraphWarnings(cycles, missingExpectedTopLevelNodes, unexpectedTopLevelNodes)
-    #saveGraphInformation(graph, pathInformation, cycles, missingExpectedTopLevelNodes, unexpectedTopLevelNodes)
+    ############################################################################
+    # This line outputs calculated graphing information to files.
+    # This takes a while so should only be run for debugging.
+    ############################################################################
+    # saveGraphInformation(graph, pathInformation, cycles, missingExpectedTopLevelNodes, unexpectedTopLevelNodes)
     
     updateObjectsBasedOnGraphInformation(cycles, pathInformation, objects, entryPointScope, entryPointName)
 
@@ -554,7 +558,7 @@ def _writeCoreZeekFiles(configuration, scriptsFolder, zeekMainFileObject, allEnu
     processingString = ""
     enumString = ""
     if configuration.signatureFile is not None:
-        sigsString = "@load-sigs dpd.sig\n"
+        sigsString = "@load-sigs ./dpd.sig\n"
     for scope in configuration.scopes:
         normalScope = utils.normalizedScope(scope, "")
 
@@ -579,7 +583,7 @@ def _writeCoreZeekFiles(configuration, scriptsFolder, zeekMainFileObject, allEnu
 
     coreFiles.append("main.zeek")
     data = {
-        "protocolName": utils.PROTOCOL_NAME,
+        "protocolName": utils.PROTOCOL_NAME.upper(),
         "mainContents": zeekMainFileObject.generateMainFile(utils.USES_LAYER_2, configuration.ethernetProtocolNumber),
         "loggingFunctions": zeekMainFileObject.addLoggingFunction()
     }

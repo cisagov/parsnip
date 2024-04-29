@@ -31,7 +31,7 @@ class ObjectField:
         
     def addInput(self, input):
         for existingInput in self.inputs:
-            if existingInput.source == input.source:
+            if existingInput.equal(input):
                 return
         if input not in self.inputs:
             self.inputs.append(input)
@@ -252,7 +252,7 @@ class Object:
     def _makeEventBackendForBits(self, field, scopes, allBitfields, allEnums, specificExportOverride, localVariableName, processingName, tabSize):
         referenceType = field.referenceType
         referencedBitfield = None
-        for scope in scopes: 
+        for scope in scopes:
             if referenceType in allBitfields[utils.normalizedScope(scope, "bitfield")]:
                 referencedBitfield = allBitfields[utils.normalizedScope(scope, "bitfield")][referenceType]
                 break
@@ -281,6 +281,23 @@ class Object:
                 break
         return "{}{}${} = {}::{}[{}{}];\n".format(utils.getTabString(tabSize), localVariableName, field.zeekName, enumScope, utils.commandNameToConst(field.referenceType).upper(), processingName, field.name)
         
+    def _makeEventBackendForList(self, field, processingName, tabSize, localVariableName, includeConditional = True):
+        # TODO: Avoid duplication on conditional lists
+        convertingFunctionString = ""
+        if field.elementType in utils.spicyToZeek:
+            actionName = field.name
+            if includeConditional:
+                argument = "{}?${}".format(processingName[:-1], actionName)
+                convertingFunctionString += "{}if ({}){{\n".format(utils.getTabString(tabSize), argument)
+                convertingFunctionString += "{}{}${} = {}{};\n".format(utils.getTabString(tabSize + 1), localVariableName, field.zeekName, processingName, field.name)
+                convertingFunctionString += "{}}}\n".format(utils.getTabString(tabSize))
+            else:
+               convertingFunctionString += "{}{}${} = {}{};\n".format(utils.getTabString(tabSize), localVariableName, field.zeekName, processingName, field.name)
+            return convertingFunctionString
+        if field.elementType == "object":
+            return ""
+        else:
+            print("Invalid List element of type {}".format(field.elementType))
     def _makeEventBackendForObject(self, field, processingName, moduleName, allEnums, allBitfields, allObjects, allSwitches, scopes, localVariableName, startingTabSize, childOverride):
         referencedObject = None
         for scope in scopes:
@@ -306,18 +323,18 @@ class Object:
                     objectZeekStructureName = processingName + action.name
                     convertingFunctionString += object.makeEventBackend(moduleName, objectZeekStructureName, allEnums, allBitfields, allObjects, allSwitches, scopes, False, localVariableName, objectZeekStructureName, startingTabSize + 1, childOverride)
                     convertingFunctionString += "{}}}\n".format(utils.getTabString(tabSize))
-        else:
+        elif action.type in utils.spicyToZeek:
             actionName = action.name
-            # TODO: Figure this out
-            # Huh???? Where is object defined?
-            #if not object.needsSpecificExport:
-            #    argument = "{}?${}".format(processingName[:-1], argument)
-            # Until we can get this figure out...
-            if action.type != "void":
-                argument = "{}?${}".format(processingName[:-1], actionName)
-                convertingFunctionString += "{}if ({}){{\n".format(utils.getTabString(tabSize), argument)
-                convertingFunctionString += "{}{}${} = {}{};\n".format(utils.getTabString(tabSize + 1), localVariableName, field.zeekName, processingName, actionName)
-                convertingFunctionString += "{}}}\n".format(utils.getTabString(tabSize))
+            argument = "{}?${}".format(processingName[:-1], actionName)
+            convertingFunctionString += "{}if ({}){{\n".format(utils.getTabString(tabSize), argument)
+            convertingFunctionString += "{}{}${} = {}{};\n".format(utils.getTabString(tabSize + 1), localVariableName, field.zeekName, processingName, actionName)
+            convertingFunctionString += "{}}}\n".format(utils.getTabString(tabSize))
+        elif action.type == "list":
+            convertingFunctionString += self._makeEventBackendForList(action, processingName, tabSize, localVariableName)
+        elif action.type == "void":
+            pass
+        else:
+            print("Invalid switch option type: {} in {}".format(action.type, object.name))
         return convertingFunctionString
         
     def _makeEventBackendForSwitchOptions(self, field, switch, processingName, moduleName, allEnums, allBitfields, allObjects, allSwitches, scopes, localVariableName, startingTabSize, childOverride, tabSize):
@@ -366,14 +383,15 @@ class Object:
             elif field.type == "enum":
                 convertingFunctionString += self._makeEventBackendForEnum(field, scopes, allEnums, localVariableName, processingName, tabSize)
             elif field.type == "object":
-                convertingFunctionString += self._makeEventBackendForObject(field, processingName, moduleName, allEnums, allBitfields, allObjects, allSwitches, scopes, localVariableName, startingTabSize, childOverride)
+                convertingFunctionString += self._makeEventBackendForObject(field, processingName, moduleName, allEnums, allBitfields, allObjects, allSwitches, scopes, localVariableName, tabSize, childOverride)
             elif field.type == "switch":
-                convertingFunctionString += self._makeEventBackendForSwitch(field, processingName, moduleName, allEnums, allBitfields, allObjects, allSwitches, scopes, localVariableName, startingTabSize, childOverride, tabSize)
+                convertingFunctionString += self._makeEventBackendForSwitch(field, processingName, moduleName, allEnums, allBitfields, allObjects, allSwitches, scopes, localVariableName, tabSize, childOverride, tabSize)
             elif field.type == "list":
-                pass
+                convertingFunctionString += self._makeEventBackendForList(field, processingName, tabSize, localVariableName, False)
             else: 
                 convertingFunctionString += "{}{}${} = {}{};\n".format(utils.getTabString(tabSize), localVariableName, field.zeekName, processingName, field.name)
             convertingFunctionString += self._finishOnConditionals(field, specificExportOverride, tabSize)
         if includeNonFields:
-            convertingFunctionString += self._finishForNonFields(localVariableName, tabSize, zeekStructureName)
+            convertingFunctionString += self._finishForNonFields(localVariableName, startingTabSize, zeekStructureName)
         return convertingFunctionString
+ 

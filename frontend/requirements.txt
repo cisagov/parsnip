@@ -1,6 +1,9 @@
 # This file is used by pip to install required python packages
 # Usage: pip install -r requirements.txt
 
+# Explicit cachelib install to fix an issue with newer docker images
+cachelib
+
 # Flask Framework
 flask
 flask-wtf

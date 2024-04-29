@@ -243,7 +243,7 @@ def getParsnipFile(snapShot):
                 itemScope, itemName = addObjectToScope(bitfield, bitfieldContents)
                 if itemScope not in scopes:
                     print("Warning: Bitfield Scope {0} does not match an Object Scope!".format(itemScope))
-                    # TODO: Actually figure out what to do here
+                    # TODO: Figure out how to show this on the frontend.
                 referencesToScopes[generateReferenceString("bits", itemName)] = itemScope
                 # Look for references in the fields
                 for field in bitfield.get("fields"):
@@ -260,7 +260,7 @@ def getParsnipFile(snapShot):
                 itemScope, itemName = addObjectToScope(enum, enumContents)
                 if itemScope not in scopes:
                     print("Warning: Enum Scope {0} does not match an Object Scope!".format(itemScope))
-                    # TODO: Actually figure out what to do here
+                    # TODO: Figure out how to show this on the frontend.
                 referencesToScopes[generateReferenceString("enum", itemName)] = itemScope
                 # Enum fields don't reference any types
 
@@ -275,7 +275,7 @@ def getParsnipFile(snapShot):
                 itemScope, itemName = addObjectToScope(currentSwitch, switchContents)
                 if itemScope not in scopes:
                     print("Warning: Enum Scope {0} does not match an Object Scope!".format(itemScope))
-                    # TODO: Actually figure out what to do here
+                    # TODO: Figure out how to show this on the frontend.
                 referencesToScopes[generateReferenceString("switch", itemName)] = itemScope
                 # Look for references in the dependsOn section
                 dependsOnSection = currentSwitch.get("dependsOn")

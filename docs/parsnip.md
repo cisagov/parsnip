@@ -4,15 +4,15 @@
 
 [Zeek](https://github.com/zeek/zeek.git) is an open source network security monitoring tool. It is highly customizable and users can introduce custom scripts and protocol parsers to enhance the data they recieve from Zeek. CISA publishes several Zeek packages for ICS protocol parsing. These can be found [here](https://github.com/zeek/zeek.git).
 
-These packages are written in one of two languages: BinPAC or Spicy. These languages are used only for Zeek parser development thus creating a steep learning curve for parser development. Parsnip seeks to lower the barrier of entry for parser creation by leveraging more familiar structures such as a Graphical User Interface(GUI) and JSON.
+These packages are written in one of two languages: BinPAC or Spicy. These languages are used only for Zeek parser development thus creating a steep learning curve for anyone interested in developing a parser. Parsnip seeks to lower the barrier of entry for parser creation by leveraging more familiar structures such as a Graphical User Interface(GUI) and JSON.
 
 ## Introduction
-Parsnip is a program developed to assist the parsing of ICS protocols.
+Parsnip is specifically designed to be applied towards developing Industrial Control Systems (ICS) protocol parsers but can be applied to any protocol.
 
 The Parsnip ecosystem consists of three parts:
 1. A GUI interface designed provide a visual representation of a protocol's packet structure
-2. JSON files in an intermediate language "parsnil" that is fed into the backend
-3. A backend that performs processing on the parsnil files and outputs the spicy, zeek and event files necessary for a parser
+2. JSON files in an intermediate language (IL) that is fed into the backend. This intermediate language is made up of a set of JSON structures using keywords for each key-value pair to indicate it's type. 
+3. A backend that performs processing on the parsnip IL files and outputs the spicy, zeek and event files necessary for a parser
 
 ## Setup
 Parsnip has been tested with Ubuntu 22.04.
@@ -45,7 +45,7 @@ pip3 install networkx matplotlib pygraphviz pydot
 ```
 
 Zeek (version &geq; 6.1.0):
-The easiest way is to use the following docker container: ghcr.io/mmguero/zeek:master. Refer to [the repository](https://github.com/mmguero/zeek-docker/pkgs/container/zeek) for more information on installation.
+The easiest way is to use the following docker container: ghcr.io/mmguero/zeek:master. Refer to [the repository](https://github.com/mmguero/zeek-docker/pkgs/container/zeek) for more information on usage.
 
 ## Getting Started
 ### Running the GUI
@@ -55,7 +55,7 @@ From the parsnip/frontend folder:
 ./start_webServer.sh
 ```
 
-This will drop you into a bash session running within the docker container.
+This will drop the user into a bash session running within a docker container.
 
 From there run:
 ```bash
@@ -63,12 +63,12 @@ cd app
 python3 app.py
 ```
 
-You should now be able to access the frontend in a web browser at: http://127.0.0.1:5000.
+Users should now be able to access the frontend in a web browser at: http://127.0.0.1:5000.
 
 Refer to the documentation in the parsnip/docs folder and the next section for more information on the GUI.
 
 ### Basic Example
-For this example, we are going to implement a relatively simple protocol using Parsnip.
+This example shows how to implement a simple protocol using Parsnip.
 
 #### Protocol Information
 The MySimpleProtocol protocol runs over TCP port 8888.
@@ -76,14 +76,16 @@ The MySimpleProtocol protocol runs over TCP port 8888.
 A protocol message for our simple protocol consists of a two byte header and a variable length body.
 The first byte of the header consists of two 4-bit bitfields. The first four bits represent the protocol version. The last four bits represent the message type. A message type of 0 represents a message for the server. A message type of 1 represents a message for the client. The second byte of the header consists of the length of the packet as an unsigned 8-bit integer. The body consists of a series a bytes where the length of the body is specified by the length field.
 
+A test PCAP of MySimpleProtocol is available in the docs/traces folder of this repository.
+
 #### Constructing the Protocol in Parsnip
-When you go to the Parsnip frontend using a browser, you will be greeted by the following page:
+When users navigate to the Parsnip frontend using a browser, they will be greeted by the following page:
 
 ![Parsnip front page](./images/front.png)
 
 ##### Protocol Configuration
 
-We begin by going to the Parser Configuration Page:
+Begin by going to the Parser Configuration Page:
 
 ![Parser configuration page](./images/empty_config.png)
 
@@ -91,7 +93,7 @@ Press the "Edit Parser Configuration" button and enter the information shown:
 
 ![Parser configuration partial](./images/partial_config.png)
 
-We will return to this screen later to specify the Entry Point Structure. After you press the "Save Configuration" button, navigate to the "Protocol Ports" tab as shown:
+Users will need to return to this screen later to specify the Entry Point Structure. After users press the "Save Configuration" button, they should navigate to the "Protocol Ports" tab as shown:
 
 ![Parser protocol ports page](./images/empty_ports.png)
 
@@ -99,14 +101,14 @@ Press the "Add Port" button and enter the information shown:
 
 ![Add TCP Port](./images/add_port.png)
 
-After you press the "Add Port" the port should now be listed as a protocol port as shown:
+After a user presses the "Add Port" the port should now be listed as a protocol port as shown:
 
 ![TCP Port added](./images/port_added.png)
 
 ##### Adding Structures
 When working within the frontend, it is best to take a bottom-up approach to defining structures.
 
-For our protocol, we will start by defining the message type enumeration.
+For MySimpleProtocol, start by defining the message type enumeration.
 
 First, navigate to the Enums page through the "View/Edit Components" menu as shown:
 
@@ -126,7 +128,7 @@ Next, navigate to the Bitfields page through the "View/Edit Components" menu as 
 
 ![Enums Navigation](./images/bitfields_navigation.png)
 
-Press the "Add Bitfield" button and enter the information shown in the next two image:
+Press the "Add Bitfield" button and enter the information shown in the next two images:
 
 ![messageType information part 1](./images/headerBits_info_1.png)
 
@@ -136,7 +138,7 @@ Press the "Add Bitfield Structure" to save the bitfield. The updated information
 
 ![Updated Bitfield Information](./images/updated_bitfields_page.png)
 
-Finally, we will build our "Object" structures. Navigate to the Objects page through the "View/Edit Components" menu as shown:
+Finally, build the "Object" structures. Navigate to the Objects page through the "View/Edit Components" menu as shown:
 
 ![Objects Navigation](./images/objects_navigation.png)
 
@@ -188,32 +190,32 @@ Press the "Add Field" button to save the information. The updated information sh
 
 ![Updated Message](./images/updated_message_fields.png)
 
-That is the end of adding structures. Next we will update the configuration with the entry point.
+That is the end of adding structures. Next users should update the configuration with the entry point.
 
 ##### Update Configuration
 
-Now that we have our entry point object defined, we return to the Parser Configuration Page as shown:
+Now that the entry point object is defined, return to the Parser Configuration Page as shown:
 
 ![Configuration update](./images/config_before_update.png)
 
-We again press the "Edit Parser Configuration" button and set the Parser Entry Point value to the "Message" object as shown:
+Press the "Edit Parser Configuration" button and set the Parser Entry Point value to the "Message" object as shown:
 
 ![Updating Entry Point](./images/finalize_config.png)
 
 Press the "Save Configuration" button to save the updated configuration.
 
 ##### Review
-We will have the frontend review the parser and look for potential issues. Navigate to the Review page. The page automatically runs checks when loaded. The output should appear as shown:
+Use the frontend to review the parser and look for potential issues. Navigate to the Review page. The page automatically runs checks when loaded. The output should appear as shown:
 
 ![Review Results](./images/review_page.png)
 
-We see that there are now Switch/Choice types in the parser, but no other errors or warnings are present.
+As the screenshot shows, there are now Switch/Choice types in the parser, but no other errors or warnings are present.
 
 ##### Download the Parsnil files
-Press the "Export Parsnip Files" link to download a zip file with the Parsnil files.
+Press the "Export Parsnip Files" link to download a zip file with the Parsnip Intermediate Language files.
 
 ### Running the Backend
-Once a "parsnil" file has been generated by the frontend, you should receive a zip file called "parsnip.zip" which contains a folder with a random string of characters for its name (e.g., 08f4789d-6915-4067-8939-4994c55acbae). Unzip the folder into its own folder. Once that zip file has been unzipped, copy the path to the random string folder as your "input_folder" for the following command.
+Once the Parsnip IL files have been generated by the frontend, users should receive a zip file called "parsnip.zip" which contains a folder with a random string of characters for its name (e.g., 08f4789d-6915-4067-8939-4994c55acbae). Unzip the folder into its own folder. Once that zip file has been unzipped, copy the path to the random string folder as the "input_folder" for the following command.
 
 To build the parser, run from the parsnip/backend folder, replacing input_folder and output_folder as appropriate:
 ```bash
