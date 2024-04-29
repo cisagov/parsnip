@@ -48,7 +48,7 @@ def createAndUseGraphInformation(configuration, objects, switches, bitfields, en
     printGraphWarnings(cycles, missingExpectedTopLevelNodes, unexpectedTopLevelNodes)
     ############################################################################
     # This line outputs calculated graphing information to files.
-    # This takes a while so only remove for debugging.
+    # This takes a while so should only be run for debugging.
     ############################################################################
     # saveGraphInformation(graph, pathInformation, cycles, missingExpectedTopLevelNodes, unexpectedTopLevelNodes)
     
