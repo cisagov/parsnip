@@ -2,7 +2,7 @@
 
 ## Background
 
-[Zeek](https://github.com/zeek/zeek.git) is an open source network security monitoring tool. It is highly customizable and users can introduce custom scripts and protocol parsers to enhance the data they recieve from Zeek. CISA publishes several Zeek packages for ICS protocol parsing. These can be found [here](https://github.com/zeek/zeek.git).
+[Zeek](https://github.com/zeek/zeek.git) is an open source network security monitoring tool. It is highly customizable and users can introduce custom scripts and protocol parsers to enhance the data they receive from Zeek. CISA publishes several Zeek packages for ICS protocol parsing. These can be found [here](https://github.com/zeek/zeek.git).
 
 These packages are written in one of two languages: BinPAC or Spicy. These languages are used only for Zeek parser development thus creating a steep learning curve for anyone interested in developing a parser. Parsnip seeks to lower the barrier of entry for parser creation by leveraging more familiar structures such as a Graphical User Interface(GUI) and JSON.
 
