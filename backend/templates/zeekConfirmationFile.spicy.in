@@ -3,11 +3,11 @@ module Zeek_${protocolName};
 import ${scope};
 import spicy;
 
-on ${scope}::Messages::%done {
+on ${scope}::${entryPoint}::%done {
 ${tab}spicy::accept_input();
 }
 
-on ${scope}::Messages::%error {
+on ${scope}::${entryPoint}::%error {
 ${tab}spicy::decline_input("error parsing ${protocolName} message");
 }
 
