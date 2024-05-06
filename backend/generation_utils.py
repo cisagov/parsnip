@@ -689,9 +689,10 @@ def generateBaseSpicyConversionFunctions(configuration, scope):
             returnString += "public function {0}(input: bytes) : {1} &cxxname=\"{2}::{0}\";\n\n".format(item.interpretingFunction, item.returnType, scope)
     return returnString
     
-def _writeSpicyConfirmationFiles(analyzerFolder):
+def _writeSpicyConfirmationFiles(analyzerFolder, entryPointName):
     zeekConfirmationFile = "zeek_{}.spicy".format(utils.PROTOCOL_NAME.lower())
     data = {
+        "entryPoint": entryPointName + "s",
         "protocolName": utils.PROTOCOL_NAME,
         "scope": utils.normalizedScope(utils.DEFAULT_SCOPE, ""),
         "tab": utils.SINGLE_TAB
@@ -863,7 +864,7 @@ def writeSpicyFiles(configuration, outRootFolder, crossScopeItems, bitfields, en
     analyzerFolder = os.path.join(outRootFolder, "analyzer")
     os.makedirs(analyzerFolder, exist_ok=True)
     
-    sourceFiles = _writeSpicyConfirmationFiles(analyzerFolder)
+    sourceFiles = _writeSpicyConfirmationFiles(analyzerFolder, entryPointName)
     
     sourceFiles += _writeConversionFiles(analyzerFolder, configuration)
             
