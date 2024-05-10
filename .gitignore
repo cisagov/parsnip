@@ -16,3 +16,8 @@ __pycache__
 Dockerfile
 *.log
 .venv/
+objects.json
+bitfields.json
+switches.json
+config.json
+enums.json
