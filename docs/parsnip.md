@@ -41,7 +41,7 @@ sudo apt install python3 python3-pip graphviz-dev
 ```
 
 ```bash
-pip3 install networkx matplotlib pygraphviz pydot
+pip3 install rustworkx matplotlib pygraphviz pydot
 ```
 
 Zeek (version &geq; 6.1.0):
