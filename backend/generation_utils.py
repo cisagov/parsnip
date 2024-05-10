@@ -444,7 +444,7 @@ def updateObjectsBasedOnGraphInformation(cycles, pathInformation, objects, entry
                     
 def determineInterScopeDependencies(configuration, bitfields, objects, switches):
     # Determine import requirements
-    # currentScope -> dependentScope[] -> ["enum"/"object"/"custom"] -> referenceType[]
+    # currentScope -> dependentScope[] -> ["enum"/"object"/"custom"/"id"] -> referenceType[]
     crossScopeItems = {}
     for scope in configuration.scopes:
         normalScope = utils.normalizedScope(scope, "")
@@ -452,6 +452,16 @@ def determineInterScopeDependencies(configuration, bitfields, objects, switches)
             print("Processing objects in scope: {0}".format(normalScope))
             for currentObjectName in objects[normalScope]:
                 currentObject = objects[normalScope][currentObjectName]
+                if currentObject.linkIds != []:
+                    for link in currentObject.linkIds:
+                        if not link.isEndLink:
+                            normalIDScope = utils.normalizedScope(utils.ID_SCOPE, "")
+                            if normalScope not in crossScopeItems:
+                                crossScopeItems[normalScope] = {}
+                            if normalIDScope not in crossScopeItems[normalScope]:
+                                crossScopeItems[normalScope][normalIDScope] = {}
+                            if "id" not in crossScopeItems[normalScope][normalIDScope]:
+                                crossScopeItems[normalScope][normalIDScope]["id"] = set()
                 for dependency in currentObject.dependsOn:
                     processDependency(dependency, normalScope, crossScopeItems, configuration.customFieldTypes, switches)
                 for field in currentObject.fields:
@@ -748,6 +758,23 @@ def _writeConversionFiles(analyzerFolder, configuration):
         copyTemplateFile(os.path.join("templates", "conversion.cc.in"), data,
                          os.path.join(analyzerFolder, ccConversionFile))
     return [spicyConversionFile, ccConversionFile]
+
+def _writeGenerateIDFiles(analyzerFolder):
+    normalScope = utils.normalizedScope(utils.ID_SCOPE, "")
+    spicyFile = normalScope.lower() + ".spicy"
+    ccFile = normalScope.lower() + ".cc"
+
+    data = {
+        "scope": normalScope
+    }
+
+    copyTemplateFile(os.path.join("templates", "generateid.spicy.in"), data,
+                     os.path.join(analyzerFolder, spicyFile))
+
+    copyTemplateFile(os.path.join("templates", "generateid.cc.in"), data,
+                     os.path.join(analyzerFolder, ccFile))
+
+    return [spicyFile, ccFile]
     
 def determineTransportProtocols(configuration):
     returnValue = []
@@ -888,6 +915,8 @@ def writeSpicyFiles(configuration, outRootFolder, crossScopeItems, bitfields, en
     sourceFiles = _writeSpicyConfirmationFiles(analyzerFolder, entryPointName)
     
     sourceFiles += _writeConversionFiles(analyzerFolder, configuration)
+
+    sourceFiles += _writeGenerateIDFiles(analyzerFolder)
             
     transportProtocols = determineTransportProtocols(configuration)
             

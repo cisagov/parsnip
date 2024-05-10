@@ -166,7 +166,7 @@ class Object:
                 if link.isEndLink:
                     initFunctionString += "{}self.{} = {};\n".format(utils.DOUBLE_TAB, link.name, link.parameterName)
                 else:
-                    initFunctionString += "{}self.{} = {}_{}::generateId();\n".format(utils.DOUBLE_TAB, link.name, utils.PROTOCOL_NAME.upper(), utils.CONVERSION_SCOPE.upper())
+                    initFunctionString += "{}self.{} = {}_{}::generateId();\n".format(utils.DOUBLE_TAB, link.name, utils.PROTOCOL_NAME.upper(), utils.ID_SCOPE.upper())
             initFunctionString += "{}}}\n".format(utils.SINGLE_TAB)
             outputString += varDeclarationString
             outputString += initFunctionString
