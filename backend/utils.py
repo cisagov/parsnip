@@ -8,6 +8,7 @@ DOUBLE_TAB = SINGLE_TAB * 2
 PROTOCOL_NAME = ""
 DEFAULT_SCOPE = "general"
 CONVERSION_SCOPE = "conversion"
+ID_SCOPE = "generateid"
 USES_LAYER_2 = False
 
 scopesHaveCrossScopeLinks = {}
