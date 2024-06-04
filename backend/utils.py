@@ -8,6 +8,7 @@ DOUBLE_TAB = SINGLE_TAB * 2
 PROTOCOL_NAME = ""
 DEFAULT_SCOPE = "general"
 CONVERSION_SCOPE = "conversion"
+ID_SCOPE = "generateid"
 USES_LAYER_2 = False
 
 scopesHaveCrossScopeLinks = {}
@@ -79,7 +80,6 @@ def loggingParentScope(scope):
 def determineSpicyStringForAction(action, switch, inputs, actionColumn, customTypes, bitfields, switches, enums):
     if "void" == action.type:
         return "void"
-    tempInputs = []
     mappedUntilValue = None
     if action.until is not None:
         mappedUntilValue = action.until
@@ -90,7 +90,13 @@ def determineSpicyStringForAction(action, switch, inputs, actionColumn, customTy
                 for dependencyIndex in range(len(switch.additionalDependsOn)):
                     if switch.additionalDependsOn[dependencyIndex].name == mappedUntilValue.get("indicator"):
                         mappedUntilValue["indicator"] = inputs[1 + dependencyIndex].source
+                        if inputs[1 + dependencyIndex].minusInUse:
+                            mappedUntilValue["minus"] = inputs[1 + dependencyIndex].minus
+                        elif "minus" in mappedUntilValue:
+                            # TODO: Figure out how mappedUntilValue is holding onto old data
+                            del mappedUntilValue["minus"]
                         break
+    tempInputs = []
     for input in action.inputs:
         if switch.dependsOn is not None and switch.dependsOn.name == input.source:
             tempInputs.append(inputs[0])

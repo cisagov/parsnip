@@ -5,7 +5,7 @@ import os
 from string import Template
 
 # Graph Theory Imports
-import networkx as nx
+import rustworkx as rx
 
 def copyFile(source, destination):
     with open(source, "r") as inputFile, open(destination, "w") as currentFile:
@@ -28,19 +28,25 @@ def createAndUseGraphInformation(configuration, objects, switches, bitfields, en
     ############################################################################
     # Load the structures as nodes
     ############################################################################
-    graph, objectNodes, nodeInformation = generateGraph(configuration, objects, switches, bitfields, enums)
+    graph, objectNodes, nodeInformation, nodeToIndex, indexToNode, connectionData = generateGraph(configuration, objects, switches, bitfields, enums)
     
     ############################################################################
     # Create actual graph
     ############################################################################
         
     # Determine paths for every node from the EntryPoint Node
-    pathInformation = calculatePathInformation(graph, objectNodes, entryPointScope, entryPointKey, nodeInformation)
+    pathInformation = calculatePathInformation(graph, objectNodes, entryPointScope, entryPointKey, nodeInformation, nodeToIndex, indexToNode)
     
     # Look for cycles in the graph
-    cycles = nx.recursive_simple_cycles(graph)
+    cycleIndices = rx.simple_cycles(graph)
+    cycles = []
+    for cycle in cycleIndices:
+        mappedCycle = []
+        for index in cycle:
+            mappedCycle.append(indexToNode[index])
+        cycles.append(mappedCycle)
     
-    missingExpectedTopLevelNodes, expectedTopLevelNodes, unexpectedTopLevelNodes = determineTopLevelNodes(graph, [entryPointKey])
+    missingExpectedTopLevelNodes, expectedTopLevelNodes, unexpectedTopLevelNodes = determineTopLevelNodes(graph, [entryPointKey], indexToNode)
     
     ############################################################################
     # Use the graph information
@@ -50,7 +56,7 @@ def createAndUseGraphInformation(configuration, objects, switches, bitfields, en
     # This line outputs calculated graphing information to files.
     # This takes a while so should only be run for debugging.
     ############################################################################
-    # saveGraphInformation(graph, pathInformation, cycles, missingExpectedTopLevelNodes, unexpectedTopLevelNodes)
+    #saveGraphInformation(graph, pathInformation, cycles, missingExpectedTopLevelNodes, unexpectedTopLevelNodes)
     
     updateObjectsBasedOnGraphInformation(cycles, pathInformation, objects, entryPointScope, entryPointName)
 
@@ -265,24 +271,32 @@ def generateGraph(configuration, objects, switches, bitfields, enums):
     ############################################################################
     # Create actual graph
     ############################################################################
-    graph = nx.DiGraph()
+    graph = rx.PyDiGraph(multigraph=False)
+    nodeToIndex = {}
+    indexToNode = {}
+    connectionData = {}
 
     for node in nodeInformation:
-        graph.add_node(node, label=nodeInformation[node][0],
-                       metaData="\"{}\"".format(nodeInformation[node][1]))
+        if node not in nodeToIndex:
+            nodeIndex = graph.add_node(node)
+            nodeToIndex[node] = nodeIndex
+            indexToNode[nodeIndex] = node
+
         
     for connection in fieldsInformation:
-        graph.add_edge(connection[0], connection[1], label=connection[2])
+        connectionID = graph.add_edge(nodeToIndex[connection[0]], nodeToIndex[connection[1]], None)
+        connectionData[connectionID] = connection[2]
         
     for connection in referenceInformation:
-        graph.add_edge(connection[0], connection[1], label=connection[2])
+        connectionID = graph.add_edge(nodeToIndex[connection[0]], nodeToIndex[connection[1]], None)
+        connectionData[connectionID] = connection[2]
         
-    return (graph, objectNodes, nodeInformation)
+    return (graph, objectNodes, nodeInformation, nodeToIndex, indexToNode, connectionData)
     
-def _processPath(path, entryPointScope, targetScope, nodeInformation):
+def _processPath(path, entryPointScope, targetScope, nodeInformation, indexToNode):
     tempPath = []
     for element in path:
-        tempPath.append(element)
+        tempPath.append(indexToNode[element])
     loggingParent = None
     parentReason = ""
     previousScope = None
@@ -292,7 +306,6 @@ def _processPath(path, entryPointScope, targetScope, nodeInformation):
         if len(parts) < 3:
             continue
         scope = parts[0]
-        #itemType = parts[1]
         referenceType = parts[2]
         if scope != targetScope:
             loggingParent = utils.loggingParentScope(previousScope)
@@ -316,7 +329,7 @@ def _processPath(path, entryPointScope, targetScope, nodeInformation):
         
     return pathInfo
     
-def calculatePathInformation(graph, objectNodes, entryPointScope, entryPointKey, nodeInformation):
+def calculatePathInformation(graph, objectNodes, entryPointScope, entryPointKey, nodeInformation, nodeToIndex, indexToNode):
     # Determine paths for every node from the EntryPoint Node
     pathInformation = {}
     for node in objectNodes:
@@ -330,21 +343,21 @@ def calculatePathInformation(graph, objectNodes, entryPointScope, entryPointKey,
         targetScope = targetParts[0]
         targetType = targetParts[1]
         targetName = targetParts[2]
-        for path in nx.all_simple_paths(graph, source=entryPointKey, target=node):
-            paths.append(_processPath(path, entryPointScope, targetScope, nodeInformation))
+        for path in rx.all_simple_paths(graph, nodeToIndex[entryPointKey], nodeToIndex[node]):
+            paths.append(_processPath(path, entryPointScope, targetScope, nodeInformation, indexToNode))
         pathInformation["{0}::{1}".format(targetScope, targetName)] = paths
     return pathInformation
     
-def determineTopLevelNodes(graph, expectedTopLevelNodes):
+def determineTopLevelNodes(graph, expectedTopLevelNodes, indexToNode):
     unexpectedNodes = []
     expectedNodes = []
     missingNodes = []
-    for node in graph:
+    for node in graph.node_indices():
         if graph.in_degree(node) == 0:
-            if node in expectedTopLevelNodes:
-                expectedNodes.append(node)
+            if indexToNode[node] in expectedTopLevelNodes:
+                expectedNodes.append(indexToNode[node])
             else:
-                unexpectedNodes.append(node)
+                unexpectedNodes.append(indexToNode[node])
     for node in expectedTopLevelNodes:
         if node not in expectedNodes:
             missingNodes.append(node)
@@ -400,17 +413,25 @@ def saveGraphInformation(graph, pathInformation, cycles, missingExpectedTopLevel
     if 0 != len(unexpectedTopLevelNodes):
         writeNodes(unexpectedTopLevelNodes, "unexpected_top_nodes.txt")
 
-    dotGraph = nx.nx_pydot.to_pydot(graph)
-    dotGraph.write_svg("output_no_dependencies.svg")
+    # TODO: Update these to work with rustworkx
+    #dotGraph = nx.nx_pydot.to_pydot(graph)
+    #dotGraph.write_svg("output_no_dependencies.svg")
     
 def updateObjectsBasedOnGraphInformation(cycles, pathInformation, objects, entryPointScope, entryPointName):
     # Deal with cycles    
     for cycle in cycles:
-        cycleParts = cycle[0].split(".")
-        try:
-            objects[cycleParts[0]][cycleParts[2]].needsSpecificExport = True
-        except KeyError:
-            print("Unknown cycle object: {}".format(cycle[0]))
+        takenCareOf = False
+        for item in cycle:
+            cycleParts = item.split(".")
+            if "object" == cycleParts[1]:
+                try:
+                    objects[cycleParts[0]][cycleParts[2]].needsSpecificExport = True
+                    takenCareOf = True
+                    break
+                except KeyError:
+                    print("Unknown cycle object: {}".format(item))
+        if not takenCareOf:
+            print("Unable to process cycl")
             
     for normalizedScope in objects:
         for objectName in objects[normalizedScope]:
@@ -423,7 +444,7 @@ def updateObjectsBasedOnGraphInformation(cycles, pathInformation, objects, entry
                     
 def determineInterScopeDependencies(configuration, bitfields, objects, switches):
     # Determine import requirements
-    # currentScope -> dependentScope[] -> ["enum"/"object"/"custom"] -> referenceType[]
+    # currentScope -> dependentScope[] -> ["enum"/"object"/"custom"/"id"] -> referenceType[]
     crossScopeItems = {}
     for scope in configuration.scopes:
         normalScope = utils.normalizedScope(scope, "")
@@ -431,6 +452,16 @@ def determineInterScopeDependencies(configuration, bitfields, objects, switches)
             print("Processing objects in scope: {0}".format(normalScope))
             for currentObjectName in objects[normalScope]:
                 currentObject = objects[normalScope][currentObjectName]
+                if currentObject.linkIds != []:
+                    for link in currentObject.linkIds:
+                        if not link.isEndLink:
+                            normalIDScope = utils.normalizedScope(utils.ID_SCOPE, "")
+                            if normalScope not in crossScopeItems:
+                                crossScopeItems[normalScope] = {}
+                            if normalIDScope not in crossScopeItems[normalScope]:
+                                crossScopeItems[normalScope][normalIDScope] = {}
+                            if "id" not in crossScopeItems[normalScope][normalIDScope]:
+                                crossScopeItems[normalScope][normalIDScope]["id"] = set()
                 for dependency in currentObject.dependsOn:
                     processDependency(dependency, normalScope, crossScopeItems, configuration.customFieldTypes, switches)
                 for field in currentObject.fields:
@@ -689,9 +720,10 @@ def generateBaseSpicyConversionFunctions(configuration, scope):
             returnString += "public function {0}(input: bytes) : {1} &cxxname=\"{2}::{0}\";\n\n".format(item.interpretingFunction, item.returnType, scope)
     return returnString
     
-def _writeSpicyConfirmationFiles(analyzerFolder):
+def _writeSpicyConfirmationFiles(analyzerFolder, entryPointName):
     zeekConfirmationFile = "zeek_{}.spicy".format(utils.PROTOCOL_NAME.lower())
     data = {
+        "entryPoint": entryPointName + "s",
         "protocolName": utils.PROTOCOL_NAME,
         "scope": utils.normalizedScope(utils.DEFAULT_SCOPE, ""),
         "tab": utils.SINGLE_TAB
@@ -726,6 +758,23 @@ def _writeConversionFiles(analyzerFolder, configuration):
         copyTemplateFile(os.path.join("templates", "conversion.cc.in"), data,
                          os.path.join(analyzerFolder, ccConversionFile))
     return [spicyConversionFile, ccConversionFile]
+
+def _writeGenerateIDFiles(analyzerFolder):
+    normalScope = utils.normalizedScope(utils.ID_SCOPE, "")
+    spicyFile = normalScope.lower() + ".spicy"
+    ccFile = normalScope.lower() + ".cc"
+
+    data = {
+        "scope": normalScope
+    }
+
+    copyTemplateFile(os.path.join("templates", "generateid.spicy.in"), data,
+                     os.path.join(analyzerFolder, spicyFile))
+
+    copyTemplateFile(os.path.join("templates", "generateid.cc.in"), data,
+                     os.path.join(analyzerFolder, ccFile))
+
+    return [spicyFile, ccFile]
     
 def determineTransportProtocols(configuration):
     returnValue = []
@@ -863,9 +912,11 @@ def writeSpicyFiles(configuration, outRootFolder, crossScopeItems, bitfields, en
     analyzerFolder = os.path.join(outRootFolder, "analyzer")
     os.makedirs(analyzerFolder, exist_ok=True)
     
-    sourceFiles = _writeSpicyConfirmationFiles(analyzerFolder)
+    sourceFiles = _writeSpicyConfirmationFiles(analyzerFolder, entryPointName)
     
     sourceFiles += _writeConversionFiles(analyzerFolder, configuration)
+
+    sourceFiles += _writeGenerateIDFiles(analyzerFolder)
             
     transportProtocols = determineTransportProtocols(configuration)
             
