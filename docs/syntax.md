@@ -496,7 +496,7 @@ The "until" variable is a field variable for list types that contains
 
 * "conditionType": The type of condition (dictates which other values exist)
     - Options:
-        * "ENDOFDATA": Continue until no more data is present
+        * "ENDOFDATA": Continue until no more data is present in the stream
         * "COUNT": A specific number of values will be read
         * "BYTECOUNT": A specific number of bytes will be read
 * "indicator" (required if using "COUNT" or "BYTECOUNT"): location that holds the number of elements or bytes to read
