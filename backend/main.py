@@ -9,9 +9,6 @@ import graphing
 import generation_utils
 import config
 
-# Graph Theory Imports
-import networkx as nx
-
 def _updateUtilValues(configuration):
     utils.PROTOCOL_NAME = configuration.protocol
     utils.USES_LAYER_2 = configuration.usesLayer2
