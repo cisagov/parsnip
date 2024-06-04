@@ -496,10 +496,11 @@ The "until" variable is a field variable for list types that contains
 
 * "conditionType": The type of condition (dictates which other values exist)
     - Options:
-        * "ENDOFDATA": Continue until no more data is present
+        * "ENDOFDATA": Continue until no more data is present in the stream
         * "COUNT": A specific number of values will be read
-* "indicator" (required if using "COUNT"): location that holds the number of elements to read
-* "minus" (optional if using "COUNT"): Subtract a constant number of entries from the indicator
+        * "BYTECOUNT": A specific number of bytes will be read
+* "indicator" (required if using "COUNT" or "BYTECOUNT"): location that holds the number of elements or bytes to read
+* "minus" (optional if using "COUNT" or "BYTECOUNT"): Subtract a constant number of entries from the indicator
     - Note: "minus" is not currently supported in the frontend.
 
 Parsnip Examples:
