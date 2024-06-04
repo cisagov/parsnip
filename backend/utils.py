@@ -188,6 +188,13 @@ def _returnListType(itemName, elementType, referenceType, scope, size, inputs, c
             sizeString = until.get("indicator")
             if until.get("minus") is not None:
                 sizeString = "({} - {})".format(sizeString, until.get("minus"))
+        elif "BYTECOUNT" == conditionType:
+            conditionString = " &until="
+            indicator = until.get("indicator")
+            if until.get("minus") is None:
+                conditionString += indicator
+            else:
+                conditionString += "({} - {})".format(indicator, until.get("minus"))
         else:
             print("Unknown list condition type of {0}".format(conditionType))
     typeString = "({0})[{1}]{2}".format(typeString, sizeString, conditionString)
