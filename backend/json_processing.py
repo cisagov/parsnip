@@ -105,6 +105,9 @@ def getSwitchType(switchName, objectField, switchUsageScope, scopes, allObjects,
     linkRequired = False
     if switch != None:
         for item in switch.options:
+            if item.action.type in utils.spicyToZeek:
+                isSkippedClass = False
+                continue
             objectName = item.action.referenceType
             for scope in scopes: 
                 if objectName in allObjects[utils.normalizedScope(scope, "")]:
@@ -345,7 +348,7 @@ def _processSwitchAction(type, action, zeekFields, object, linkingFields, scope,
             object.addExcludedField(action.name)
     elif action.type in utils.spicyToZeek:
         zeekField = zeektypes.ZeekField()
-        _processBasicType(zeekFields, zeekField, object, action.name, utils.spicyToZeek[action.type])
+        _processBasicType(zeekFields, zeekField, object, action, utils.spicyToZeek[action.type])
     elif action.type == "list":
         _processListType(zeekFields, action, linkingFields, object, scope, scopes, allObjects, zeekObjects, zeekMainFileObject)
     elif action.type == "void":
