@@ -282,12 +282,14 @@ class Object:
         return "{}{}${} = {}::{}[{}{}];\n".format(utils.getTabString(tabSize), localVariableName, field.zeekName, enumScope, utils.commandNameToConst(field.referenceType).upper(), processingName, field.name)
         
     def _makeEventBackendForList(self, field, processingName, tabSize, localVariableName, includeConditional = True):
-        # TODO: Avoid duplication on conditional lists
         convertingFunctionString = ""
         if field.elementType in utils.spicyToZeek:
             actionName = field.name
             if includeConditional:
-                argument = "{}?${}".format(processingName[:-1], actionName)
+                if not self.needsSpecificExport:
+                    argument = "{}?${}".format(processingName[:-1], actionName)
+                else:
+                    argument = actionName
                 convertingFunctionString += "{}if ({}){{\n".format(utils.getTabString(tabSize), argument)
                 convertingFunctionString += "{}{}${} = {}{};\n".format(utils.getTabString(tabSize + 1), localVariableName, field.zeekName, processingName, field.name)
                 convertingFunctionString += "{}}}\n".format(utils.getTabString(tabSize))
@@ -309,7 +311,7 @@ class Object:
             return referencedObject.makeEventBackend(moduleName, objectZeekStructureName, allEnums, allBitfields, allObjects, allSwitches, scopes, False, localVariableName, objectZeekStructureName, startingTabSize, childOverride)
         return ""
         
-    def _makeEventBackendForSwitchAction(self, field, action, processingName, moduleName, allEnums, allBitfields, allObjects, allSwitches, scopes, localVariableName, startingTabSize, childOverride, tabSize):
+    def _makeEventBackendForSwitchAction(self, action, processingName, moduleName, allEnums, allBitfields, allObjects, allSwitches, scopes, localVariableName, startingTabSize, childOverride, tabSize):
         convertingFunctionString = ""
         if action.type == "object":
             objectName = action.referenceType
@@ -324,10 +326,11 @@ class Object:
                     convertingFunctionString += object.makeEventBackend(moduleName, objectZeekStructureName, allEnums, allBitfields, allObjects, allSwitches, scopes, False, localVariableName, objectZeekStructureName, startingTabSize + 1, childOverride)
                     convertingFunctionString += "{}}}\n".format(utils.getTabString(tabSize))
         elif action.type in utils.spicyToZeek:
-            actionName = action.name
-            argument = "{}?${}".format(processingName[:-1], actionName)
+            argument = action.name
+            if not self.needsSpecificExport:
+                argument = "{}?${}".format(processingName[:-1], argument)
             convertingFunctionString += "{}if ({}){{\n".format(utils.getTabString(tabSize), argument)
-            convertingFunctionString += "{}{}${} = {}{};\n".format(utils.getTabString(tabSize + 1), localVariableName, field.zeekName, processingName, actionName)
+            convertingFunctionString += "{}{}${} = {}{};\n".format(utils.getTabString(tabSize + 1), localVariableName, action.zeekName, processingName, action.name)
             convertingFunctionString += "{}}}\n".format(utils.getTabString(tabSize))
         elif action.type == "list":
             convertingFunctionString += self._makeEventBackendForList(action, processingName, tabSize, localVariableName)
@@ -337,16 +340,17 @@ class Object:
             print("Invalid switch option type: {} in {}".format(action.type, object.name))
         return convertingFunctionString
         
-    def _makeEventBackendForSwitchOptions(self, field, switch, processingName, moduleName, allEnums, allBitfields, allObjects, allSwitches, scopes, localVariableName, startingTabSize, childOverride, tabSize):
+    def _makeEventBackendForSwitchOptions(self, switch, processingName, moduleName, allEnums, allBitfields, allObjects, allSwitches, scopes, localVariableName, startingTabSize, childOverride, tabSize):
         convertingFunctionString = ""
         for item in switch.options:
-            convertingFunctionString += self._makeEventBackendForSwitchAction(field, item.action, processingName, moduleName, allEnums, allBitfields, allObjects, allSwitches, scopes, localVariableName, startingTabSize, childOverride, tabSize)
+            convertingFunctionString += self._makeEventBackendForSwitchAction(item.action, processingName, moduleName, allEnums, allBitfields, allObjects, allSwitches, scopes, localVariableName, startingTabSize, childOverride, tabSize)
         return convertingFunctionString
         
-    def _makeEventBackendForSwitchDefault(self, field, switch, processingName, moduleName, allEnums, allBitfields, allObjects, allSwitches, scopes, localVariableName, startingTabSize, childOverride, tabSize):
-        return self._makeEventBackendForSwitchAction(field, switch.default, processingName, moduleName, allEnums, allBitfields, allObjects, allSwitches, scopes, localVariableName, startingTabSize, childOverride, tabSize)
+    def _makeEventBackendForSwitchDefault(self, switch, processingName, moduleName, allEnums, allBitfields, allObjects, allSwitches, scopes, localVariableName, startingTabSize, childOverride, tabSize):
+        return self._makeEventBackendForSwitchAction(switch.default, processingName, moduleName, allEnums, allBitfields, allObjects, allSwitches, scopes, localVariableName, startingTabSize, childOverride, tabSize)
         
     def _makeEventBackendForSwitch(self, field, processingName, moduleName, allEnums, allBitfields, allObjects, allSwitches, scopes, localVariableName, startingTabSize, childOverride, tabSize):
+        convertingFunctionString = ""
         for switchScope in scopes: 
             if field.referenceType in allSwitches[utils.normalizedScope(switchScope, "")]:
                 switch = allSwitches[utils.normalizedScope(switchScope, "")][field.referenceType]
@@ -354,13 +358,11 @@ class Object:
         switchType = ""            
         if switch != None:
             switchType = json_processing.getSwitchType(field.referenceType, field, self.scope, scopes, allObjects, allSwitches)
-        if switchType != "contained":
-            return ""
-
-        convertingFunctionString = self._makeEventBackendForSwitchOptions(field, switch, processingName, moduleName, allEnums, allBitfields, allObjects, allSwitches, scopes, localVariableName, startingTabSize, childOverride, tabSize)
+        if switchType == "contained":
+            convertingFunctionString = self._makeEventBackendForSwitchOptions(switch, processingName, moduleName, allEnums, allBitfields, allObjects, allSwitches, scopes, localVariableName, startingTabSize, childOverride, tabSize)
         
         if switch.default != None:
-            convertingFunctionString += self._makeEventBackendForSwitchDefault(field, switch, processingName, moduleName, allEnums, allBitfields, allObjects, allSwitches, scopes, localVariableName, startingTabSize, childOverride, tabSize)
+            convertingFunctionString += self._makeEventBackendForSwitchDefault(switch, processingName, moduleName, allEnums, allBitfields, allObjects, allSwitches, scopes, localVariableName, startingTabSize, childOverride, tabSize)
         return convertingFunctionString
                 
     def makeEventBackend(self, moduleName, zeekStructureName, allEnums, allBitfields, allObjects, allSwitches, scopes, includeNonFields = True, logObjectVariableName = "", itemPrefix = "", startingTabSize = 1, specificExportOverride=False):
@@ -376,6 +378,9 @@ class Object:
         if self.linkIds != []:
             convertingFunctionString += self._getLinkIDConvertingFunctions(tabSize, localVariableName, processingName)
         for field in self.fields:
+            if field.type == "switch":
+                convertingFunctionString += self._makeEventBackendForSwitch(field, processingName, moduleName, allEnums, allBitfields, allObjects, allSwitches, scopes, localVariableName, tabSize, childOverride, tabSize)
+                continue
             tabSize, temp = self._updateOnConditionals(startingTabSize, field, specificExportOverride, processingName)
             convertingFunctionString += temp
             if field.type == "bits":
@@ -384,8 +389,6 @@ class Object:
                 convertingFunctionString += self._makeEventBackendForEnum(field, scopes, allEnums, localVariableName, processingName, tabSize)
             elif field.type == "object":
                 convertingFunctionString += self._makeEventBackendForObject(field, processingName, moduleName, allEnums, allBitfields, allObjects, allSwitches, scopes, localVariableName, tabSize, childOverride)
-            elif field.type == "switch":
-                convertingFunctionString += self._makeEventBackendForSwitch(field, processingName, moduleName, allEnums, allBitfields, allObjects, allSwitches, scopes, localVariableName, tabSize, childOverride, tabSize)
             elif field.type == "list":
                 convertingFunctionString += self._makeEventBackendForList(field, processingName, tabSize, localVariableName, False)
             else: 

@@ -348,6 +348,7 @@ def _processSwitchAction(type, action, zeekFields, object, linkingFields, scope,
             object.addExcludedField(action.name)
     elif action.type in utils.spicyToZeek:
         zeekField = zeektypes.ZeekField()
+        zeekField.name = utils.commandNameToConst(object.name).lower() + "_" + utils.commandNameToConst(action.name).lower()
         _processBasicType(zeekFields, zeekField, object, action, utils.spicyToZeek[action.type])
     elif action.type == "list":
         _processListType(zeekFields, action, linkingFields, object, scope, scopes, allObjects, zeekObjects, zeekMainFileObject)

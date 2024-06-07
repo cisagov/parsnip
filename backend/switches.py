@@ -11,6 +11,7 @@ class SwitchAction:
         self.inputs = []
         self.scope = utils.normalizedScope(scope, type)
         self.size = 0
+        self.zeekName = ''
         self.until = None
     
     def addInput(self, input):
