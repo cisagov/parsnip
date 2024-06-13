@@ -286,7 +286,7 @@ class Object:
         if field.elementType in utils.spicyToZeek:
             actionName = field.name
             if includeConditional:
-                if not self.needsSpecificExport:
+                if not self.needsSpecificExport or self.logWithParent:
                     argument = "{}?${}".format(processingName[:-1], actionName)
                 else:
                     argument = actionName
@@ -319,7 +319,7 @@ class Object:
                 if objectName in allObjects[utils.normalizedScope(scope, "")]:
                     object = allObjects[utils.normalizedScope(scope, "")][objectName]
                     argument = action.name
-                    if not self.needsSpecificExport:
+                    if not self.needsSpecificExport or childOverride:
                         argument = "{}?${}".format(processingName[:-1], argument)
                     convertingFunctionString += "{}if ({}){{\n".format(utils.getTabString(tabSize), argument)
                     objectZeekStructureName = processingName + action.name
@@ -327,7 +327,7 @@ class Object:
                     convertingFunctionString += "{}}}\n".format(utils.getTabString(tabSize))
         elif action.type in utils.spicyToZeek:
             argument = action.name
-            if not self.needsSpecificExport:
+            if not self.needsSpecificExport or childOverride:
                 argument = "{}?${}".format(processingName[:-1], argument)
             convertingFunctionString += "{}if ({}){{\n".format(utils.getTabString(tabSize), argument)
             convertingFunctionString += "{}{}${} = {}{};\n".format(utils.getTabString(tabSize + 1), localVariableName, action.zeekName, processingName, action.name)
