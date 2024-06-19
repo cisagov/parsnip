@@ -27,7 +27,6 @@ class ObjectField:
         self.scope = utils.normalizedScope(scope, type)
         self.conditional = []
         self.endianness = "big"
-        self.zeekName = ""
         
     def addInput(self, input):
         for existingInput in self.inputs:
@@ -251,6 +250,7 @@ class Object:
         
     def _makeEventBackendForBits(self, field, scopes, allBitfields, allEnums, specificExportOverride, localVariableName, processingName, tabSize):
         referenceType = field.referenceType
+        fieldPrefix = utils.commandNameToConst(self.name).lower() + "_" +  utils.commandNameToConst(field.name).lower()
         referencedBitfield = None
         for scope in scopes:
             if referenceType in allBitfields[utils.normalizedScope(scope, "bitfield")]:
@@ -262,7 +262,7 @@ class Object:
                 argument = bitfieldItem.name
                 if not self.needsSpecificExport or specificExportOverride:
                     argument = "{}{}${}".format(processingName, field.name, argument)
-                convertingFunctionString += "{}{}${}_{} = ".format(utils.getTabString(tabSize), localVariableName, field.zeekName, utils.commandNameToConst(bitfieldItem.name).lower())
+                convertingFunctionString += "{}{}${}_{} = ".format(utils.getTabString(tabSize), localVariableName, fieldPrefix, utils.commandNameToConst(bitfieldItem.name).lower())
                 if bitfieldItem.type == "enum":
                     for scope in scopes: 
                         if bitfieldItem.referenceType in allEnums[utils.normalizedScope(scope, "enum")]:
@@ -275,14 +275,16 @@ class Object:
         return convertingFunctionString
         
     def _makeEventBackendForEnum(self, field, scopes, allEnums, localVariableName, processingName, tabSize):
+        zeekName = utils.commandNameToConst(self.name).lower() + "_" + utils.commandNameToConst(field.name).lower()
         for scope in scopes: 
             if field.referenceType in allEnums[utils.normalizedScope(scope, "enum")]:
                 enumScope = utils.normalizedScope(scope, "enum")
                 break
-        return "{}{}${} = {}::{}[{}{}];\n".format(utils.getTabString(tabSize), localVariableName, field.zeekName, enumScope, utils.commandNameToConst(field.referenceType).upper(), processingName, field.name)
+        return "{}{}${} = {}::{}[{}{}];\n".format(utils.getTabString(tabSize), localVariableName, zeekName, enumScope, utils.commandNameToConst(field.referenceType).upper(), processingName, field.name)
         
-    def _makeEventBackendForList(self, field, processingName, tabSize, localVariableName, includeConditional = True):
+    def _makeEventBackendForList(self, field, processingName, tabSize, localVariableName, includeConditional = False):
         convertingFunctionString = ""
+        zeekName = utils.commandNameToConst(self.name).lower() + "_" + utils.commandNameToConst(field.name).lower() 
         if field.elementType in utils.spicyToZeek:
             actionName = field.name
             if includeConditional:
@@ -291,10 +293,10 @@ class Object:
                 else:
                     argument = actionName
                 convertingFunctionString += "{}if ({}){{\n".format(utils.getTabString(tabSize), argument)
-                convertingFunctionString += "{}{}${} = {}{};\n".format(utils.getTabString(tabSize + 1), localVariableName, field.zeekName, processingName, field.name)
+                convertingFunctionString += "{}{}${} = {}{};\n".format(utils.getTabString(tabSize + 1), localVariableName, zeekName, processingName, field.name)
                 convertingFunctionString += "{}}}\n".format(utils.getTabString(tabSize))
             else:
-               convertingFunctionString += "{}{}${} = {}{};\n".format(utils.getTabString(tabSize), localVariableName, field.zeekName, processingName, field.name)
+               convertingFunctionString += "{}{}${} = {}{};\n".format(utils.getTabString(tabSize), localVariableName, zeekName, processingName, field.name)
             return convertingFunctionString
         if field.elementType == "object":
             return ""
@@ -327,13 +329,20 @@ class Object:
                     convertingFunctionString += "{}}}\n".format(utils.getTabString(tabSize))
         elif action.type in utils.spicyToZeek:
             argument = action.name
+            zeekName = utils.commandNameToConst(self.name).lower() + "_" + utils.commandNameToConst(action.name).lower()
             if not self.needsSpecificExport or childOverride:
                 argument = "{}?${}".format(processingName[:-1], argument)
-            convertingFunctionString += "{}if ({}){{\n".format(utils.getTabString(tabSize), argument)
-            convertingFunctionString += "{}{}${} = {}{};\n".format(utils.getTabString(tabSize + 1), localVariableName, action.zeekName, processingName, action.name)
-            convertingFunctionString += "{}}}\n".format(utils.getTabString(tabSize))
+                convertingFunctionString += "{}if ({}){{\n".format(utils.getTabString(tabSize), argument)
+                tabSize += 1
+            convertingFunctionString += "{}{}${} = {}{};\n".format(utils.getTabString(tabSize), localVariableName, zeekName, processingName, action.name)
+            if not self.needsSpecificExport or childOverride:
+                tabSize -= 1
+                convertingFunctionString += "{}}}\n".format(utils.getTabString(tabSize))
         elif action.type == "list":
-            convertingFunctionString += self._makeEventBackendForList(action, processingName, tabSize, localVariableName)
+            includeConditional = True
+            if self.needsSpecificExport and not childOverride:
+                includeConditional = False
+            convertingFunctionString += self._makeEventBackendForList(action, processingName, tabSize, localVariableName, includeConditional)
         elif action.type == "void":
             pass
         else:
@@ -392,7 +401,8 @@ class Object:
             elif field.type == "list":
                 convertingFunctionString += self._makeEventBackendForList(field, processingName, tabSize, localVariableName, False)
             else: 
-                convertingFunctionString += "{}{}${} = {}{};\n".format(utils.getTabString(tabSize), localVariableName, field.zeekName, processingName, field.name)
+                zeekName = utils.commandNameToConst(self.name).lower() + "_" + utils.commandNameToConst(field.name).lower()
+                convertingFunctionString += "{}{}${} = {}{};\n".format(utils.getTabString(tabSize), localVariableName, zeekName, processingName, field.name)
             convertingFunctionString += self._finishOnConditionals(field, specificExportOverride, tabSize)
         if includeNonFields:
             convertingFunctionString += self._finishForNonFields(localVariableName, startingTabSize, zeekStructureName)
