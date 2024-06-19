@@ -329,7 +329,6 @@ def processBitfieldFile(file):
     
 def _processBasicType(zeekFields, zeekField, object, field, type):
     zeekField.name = utils.commandNameToConst(object.name).lower() + "_" + utils.commandNameToConst(field.name).lower()
-    field.zeekName = zeekField.name
     zeekField.type =  type
     zeekFields.append(zeekField)
     object.addIncludedField(field)
@@ -344,10 +343,9 @@ def _processSwitchAction(type, action, zeekFields, object, linkingFields, scope,
     if action.type == "object":
         if type == "link":
             object.addExcludedField(action.name)
-        else:
-            object.addExcludedField(action.name)
     elif action.type in utils.spicyToZeek:
         zeekField = zeektypes.ZeekField()
+        zeekField.name = utils.commandNameToConst(object.name).lower() + "_" + utils.commandNameToConst(action.name).lower()
         _processBasicType(zeekFields, zeekField, object, action, utils.spicyToZeek[action.type])
     elif action.type == "list":
         _processListType(zeekFields, action, linkingFields, object, scope, scopes, allObjects, zeekObjects, zeekMainFileObject)
@@ -407,7 +405,7 @@ def _processSwitchType(zeekFields, linkingFields, object, field, scope, scopes, 
                             
 def _processBitsType(zeekFields, object, field, bitfields, scope, generalScope):
     referenceType = field.referenceType
-    field.zeekName = utils.commandNameToConst(object.name).lower() + "_" +  utils.commandNameToConst(field.name).lower()
+    fieldZeekName = utils.commandNameToConst(object.name).lower() + "_" +  utils.commandNameToConst(field.name).lower()
     try:
         reference = bitfields[scope][referenceType]
     except KeyError:
@@ -418,8 +416,8 @@ def _processBitsType(zeekFields, object, field, bitfields, scope, generalScope):
             return
     for bitField in reference.fields:
         zeekType = utils.spicyToZeek[bitField.type]
-        fieldname = field.zeekName + "_" + utils.commandNameToConst(bitField.name).lower()
-        zeekBitField = zeektypes.ZeekField(fieldname, zeekType)
+        fieldName = fieldZeekName + "_" + utils.commandNameToConst(bitField.name).lower()
+        zeekBitField = zeektypes.ZeekField(fieldName, zeekType)
         zeekFields.append(zeekBitField)
     object.addIncludedField(field)
     
@@ -464,19 +462,17 @@ def _processObjectType(field, linkingFields, object, allObjects, generalScope, s
         object.addLinkField(linkObjectField)
         linkEndObjectField = objects.Link(spicyFieldName, "parentLinkId", True)
         referencedObject.addLinkField(linkEndObjectField)
-        object.addExcludedField(field.name)  
+        object.addExcludedField(field)  
         object.needsSpecificExport = True
         # TODO: Double check this function for side effects
         _processLinkingField(referencedObject, linkingFields, zeekObjects, scope, zeekMainFileObject)
-        field.zeekName = utils.commandNameToConst(object.name).lower() + "_" +  utils.commandNameToConst(field.name).lower()
         
 def _processListType(zeekFields, field, linkingFields, object, scope, scopes, allObjects, zeekObjects, zeekMainFileObject):
     if field.elementType in utils.spicyToZeek:
         zeekFieldName = utils.commandNameToConst(object.name).lower() + "_" +  utils.commandNameToConst(field.name).lower()
-        field.zeekName = zeekFieldName
         zeekType = "vector of {}".format(utils.spicyToZeek[field.elementType])
         zeekBitField = zeektypes.ZeekField(zeekFieldName, zeekType)
-        object.addExcludedField(field.name)
+        object.addIncludedField(field)
         zeekFields.append(zeekBitField)
     elif field.elementType == "object":
         referencedObject, objectScope = utils.getObject(field.referenceType, scopes, allObjects)
@@ -490,7 +486,7 @@ def _processListType(zeekFields, field, linkingFields, object, scope, scopes, al
         linkingDependency = inputs.Dependency("listParentLinkId", "string")
         referencedObject.addDependency(linkingDependency)
         referencedObject.logIndependently == True
-        object.addExcludedField(field.name)
+        object.addExcludedField(field)
         object.needsSpecificExport = True
         _processLinkingField(referencedObject, linkingFields, zeekObjects, objectScope, zeekMainFileObject)
         
