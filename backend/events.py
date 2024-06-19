@@ -95,6 +95,10 @@ class SpicyEvent:
                             eventName += ","
                 elif field.type == "object":
                     eventName += "{}: {}::{}".format(field.name,  utils.normalizedScope(field.scope), field.referenceType)
+                elif field.type == "list":
+                    if field.elementType in utils.spicyToZeek:
+                        zeekType = "vector of {}".format(utils.spicyToZeek[field.elementType])
+                        eventName += "{}: {}".format(field.name,  zeekType)
                 elif "linking" in field.type:
                    continue
                 else:
