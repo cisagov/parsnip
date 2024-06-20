@@ -222,7 +222,7 @@ class Object:
         argument = "c"
         if utils.USES_LAYER_2:
             argument = localVariableName
-        convertingFunctionString = "{}{}::emit_{}_{}({});\n".format(utils.getTabString(tabSize), utils.PROTOCOL_NAME, utils.PROTOCOL_NAME.lower(), zeekStructureName.lower(), argument)
+        convertingFunctionString = "{}{}::emit_{}_{}({});\n".format(utils.getTabString(tabSize), utils.PROTOCOL_NAME.upper(), utils.PROTOCOL_NAME.lower(), zeekStructureName.lower(), argument)
         convertingFunctionString += "}\n"
         return convertingFunctionString
         

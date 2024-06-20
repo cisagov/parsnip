@@ -43,7 +43,7 @@ class ZeekMain:
         if not isSingle:
             pathName = pathName.replace("_log", "")
         recordLogName = "LOG_{}".format(record.name.upper())
-        returnString += "{}Log::create_stream({}::{},\n".format(indent, utils.PROTOCOL_NAME, recordLogName)
+        returnString += "{}Log::create_stream({}::{},\n".format(indent, utils.PROTOCOL_NAME.upper(), recordLogName)
         returnString += "{}[$columns={}{},\n".format(indent, record.scope, record.name)
         returnString += "{}$ev=log_{},\n".format(indent, record.name.lower())
         returnString += "{}$path=\"{}_{}\"]);\n".format(indent, utils.PROTOCOL_NAME.lower(), pathName)
@@ -136,18 +136,18 @@ class ZeekMain:
             connectionName = "{}_{}".format(utils.PROTOCOL_NAME.lower(), record.name.lower())
             if utils.USES_LAYER_2:
                 if record.scope != "":
-                    recordScope = "{}_{}::".format(utils.PROTOCOL_NAME, record.name.upper())
+                    recordScope = "{}_{}::".format(utils.PROTOCOL_NAME.upper(), record.name.upper())
                     fileString += "{}global emit_{}_{}: function({}_record: {}::{});\n".format(utils.SINGLE_TAB, utils.PROTOCOL_NAME.lower(), record.name.lower(), recordScope, record.name.lower())
                 else:
                     functionsString += "function emit_{}_{}({}_record: {}) {{\n".format(utils.PROTOCOL_NAME.lower(), record.name.lower(), record.name.lower(), record.name)
-                functionsString += "{}Log::write({}::LOG_{}, {}_record);\n".format(utils.SINGLE_TAB, utils.PROTOCOL_NAME, record.name.upper(), record.name.lower())
+                functionsString += "{}Log::write({}::LOG_{}, {}_record);\n".format(utils.SINGLE_TAB, utils.PROTOCOL_NAME.upper(), record.name.upper(), record.name.lower())
             else:
                 functionsString += "function emit_{}_{}(c: connection) {{\n".format(utils.PROTOCOL_NAME.lower(), record.name.lower())
                 functionsString += "{}if (! c?${} )\n".format(utils.SINGLE_TAB, connectionName)
                 functionsString += "{}return;\n".format(utils.DOUBLE_TAB)
                 functionsString += "{}if ( c?${}_proto )\n".format(utils.SINGLE_TAB, utils.PROTOCOL_NAME.lower())
                 functionsString += "{}c${}$proto = c${}_proto;\n".format(utils. DOUBLE_TAB, connectionName, utils.PROTOCOL_NAME.lower())
-                functionsString += "{}Log::write({}::LOG_{}, c${});\n".format(utils.SINGLE_TAB, utils.PROTOCOL_NAME, record.name.upper(), connectionName)
+                functionsString += "{}Log::write({}::LOG_{}, c${});\n".format(utils.SINGLE_TAB, utils.PROTOCOL_NAME.upper(), record.name.upper(), connectionName)
                 functionsString += "{}delete c${};\n".format(utils.SINGLE_TAB, connectionName)
             functionsString += "}\n\n"
         return functionsString
@@ -187,7 +187,7 @@ class ZeekRecord:
         else:
             scopeName = scope
         if scopeName != "general":
-            self.scope = "{}_{}::".format(utils.PROTOCOL_NAME, scopeName.upper())
+            self.scope = "{}_{}::".format(utils.PROTOCOL_NAME.upper(), scopeName.upper())
         else:
             self.scope = ""
         self.externalLinkFields = []
