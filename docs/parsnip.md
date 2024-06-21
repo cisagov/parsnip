@@ -11,14 +11,16 @@ Parsnip is specifically designed to be applied towards developing Industrial Con
 
 The Parsnip ecosystem consists of three parts:
 1. A GUI interface designed provide a visual representation of a protocol's packet structure
-2. JSON files in an intermediate language (IL) that is fed into the backend. This intermediate language is made up of a set of JSON structures using keywords for each key-value pair to indicate it's type. 
+2. JSON files in an intermediate language (IL) that is fed into the backend. This intermediate language is made up of a set of JSON structures using keywords for each key-value pair to indicate it's type.
 3. A backend that performs processing on the parsnip IL files and outputs the spicy, zeek and event files necessary for a parser
 
 ## Setup
-Parsnip has been tested with Ubuntu 22.04.
+Parsnip has been tested with Ubuntu 22.04 and 24.04.
 
 ### GUI
 Install Prerequisites:
+
+**Method 1**
 
 ```bash
 sudo apt update
@@ -33,8 +35,40 @@ sudo usermod -a -G docker $USER
 
 **Restart your computer to activate docker and set up the user within the docker group.**
 
+**Method 2**
+
+```bash
+#!/bin/bash
+
+# Install Docker Key
+sudo apt update
+sudo apt install ca-certificates curl
+sudo install -m 0755 -d /etc/apt/keyrings
+sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+sudo chmod a+r /etc/apt/keyrings/docker.asc
+
+# Add the repository to sources
+# Note: need to change VERSION_CODENAME to UBUNTU_CODENAME if running an Ubuntu derivative
+echo \
+    "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu \
+    $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | \
+    sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+
+sudo apt update
+sudo apt install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+```
+
+Allow a non-root user to use Docker
+
+```bash
+sudo apt install uidmap
+dockerd-rootless-setuptool.sh install
+```
+
 ### Backend
 Install Prerequisites:
+
+#### Ubuntu 22.04
 
 ```bash
 sudo apt install python3 python3-pip graphviz-dev
@@ -44,6 +78,19 @@ sudo apt install python3 python3-pip graphviz-dev
 pip3 install rustworkx matplotlib pygraphviz pydot
 ```
 
+#### Ubuntu 24.04
+
+```bash
+sudo apt install python3 python3-pip graphviz-dev python3-matplotlib python3-pygraphviz python3-pydot
+```
+
+Install Rustworkx as system package:
+
+```bash
+sudo pip3 install rustworkx --break-system-packages
+```
+
+#### Zeek
 Zeek (version &geq; 6.1.0):
 The easiest way is to use the following docker container: ghcr.io/mmguero/zeek:master. Refer to [the repository](https://github.com/mmguero/zeek-docker/pkgs/container/zeek) for more information on usage.
 
@@ -230,6 +277,61 @@ python3 main.py ~/Downloads/parsnip/08f4789d-6915-4067-8939-4994c55acbae ~/MyPar
 The parser code files should now be located in the output_folder directory.
 
 Compile and package as usual. At minimum, Zeek version 6.1.0 is required to take full advantage of all features.
+
+### Running the Parser with Zeek
+
+There are multiple ways to run the resulting parser using Zeek. Below is an example of one way to do it.
+
+#### Zkg Install for Testing with a Zeek docker container
+
+##### Initiating a git Repository
+In order to use the zkg utility the parser must be part of an up to date (i.e., not dirty) git repository.
+
+The following commands can be used to initialize the repository, replacing output_folder as appropriate:
+```bash
+cd output_folder
+echo "*.log" > .gitignore
+git init .
+git add -A
+git commit -m "Initial Commit"
+```
+
+For example,
+```bash
+cd ~/MyParser
+echo "*.log" > .gitignore
+git init .
+git add -A
+git commit -m "Initial Commit"
+```
+
+##### Running the Zeek Docker Container
+Next, start the zeek container with the parser folder mounted, replacing output_folder and mount_folder (specified by full path) as appropriate:
+```bash
+docker run -t -i -P --rm -v output_folder:mount_folder:rw --entrypoint /bin/bash ghcr.io/mmguero/zeek:master
+```
+
+For example,
+```bash
+docker run -t -i -P --rm -v $HOME/MyParser:/root/MyParser:rw --entrypoint /bin/bash ghcr.io/mmguero/zeek:master
+```
+
+##### Installing the parser
+Inside the docker container, navigate to the mounted folder (specified in the previous command) and run the following:
+```bash
+zkg install .
+```
+
+##### Runnint the parser
+Assuming the parser has installed via the previous step, the parser can be run using the following command, replacing pcap_path with the path to a pcap file to test:
+```bash
+zeek -Cr pcap_path local
+```
+
+For example:
+```bash
+zeek -Cr /root/MyParser/example/test.pcapng local
+```
 
 ## Syntax Information
 Refer to [syntax.md](syntax.md) for more information about writing a parser using Parsnip.
