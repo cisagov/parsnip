@@ -322,7 +322,7 @@ Inside the docker container, navigate to the mounted folder (specified in the pr
 zkg install .
 ```
 
-##### Runnint the parser
+##### Running the parser
 Assuming the parser has installed via the previous step, the parser can be run using the following command, replacing pcap_path with the path to a pcap file to test:
 ```bash
 zeek -Cr pcap_path local
