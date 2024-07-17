@@ -24,6 +24,7 @@
                 <th scope="col">Size in Bits</th>
                 <th scope="col">Scope</th>
                 <th scope="col">Values</th>
+                <th scope="col">Edit?</th>
                 <th scope="col">Delete?</th>
             </tr>
         </thead>
@@ -48,7 +49,9 @@
                         {% endfor %}
                     </ol>
                 </td>
-                <td class="centeredText confirmDelete"><a href="{{ url_for('main.removeEnum', index=loop.index0) }}">X</a></td>
+                
+                <td class="centeredText editEnumButton"><a href="#" class="ui-button ui-widget ui-corner-all editEnumButton">Edit Enum</a></td>
+                <td class="centeredText confirmDelete "><a href="{{ url_for('main.removeEnum', index=loop.index0) }}" class="ui-button ui-widget">Delete Button</a></td>
             </tr>
             {% endfor %}
         {% endif %}
@@ -60,13 +63,175 @@
   </div>
 </div>
 
-<!-- Dialogs -->
+
+<!-- EDIT Dialogs -->
+<div id="editEnumDialog" class="dialog" title="Edit Enum">
+<form id="editForm" method="POST" action="{{ url_for('main.addEnum') }}">
+    {{ addEnumForm.csrf_token }}
+    
+    <!-- Name -->
+    <p class="fieldSet">
+        
+        {{ addEnumForm.enumName.label }}
+        {{ addEnumForm.enumName }}
+    </p>
+    {% if addEnumForm.enumName.error %}
+    <div class="ui-widget">
+        <div class="ui-state-error ui-corner-all">
+            <p class="errorLabel"><span class="ui-icon ui-icon-alert"></span>Error:</p>
+            <ul class="errors">
+            {% for error in editEnumForm.enumName.error %}
+                <li>{{ error }}</li>
+            {% endfor %}
+            </ul>
+        </div>
+    </div>
+    {% endif %}
+    <!-- End Name -->
+    
+    <!-- Reference -->
+    <p class="fieldSet">
+        {{ addEnumForm.enumReference.label }}
+        {{ addEnumForm.enumReference }}
+    </p>
+    {% if addEnumForm.enumReference.error %}
+    <div class="ui-widget">
+        <div class="ui-state-error ui-corner-all">
+            <p class="errorLabel"><span class="ui-icon ui-icon-alert"></span>Error:</p>
+            <ul class="errors">
+            {% for error in addEnumForm.enumReference.error %}
+                <li>{{ error }}</li>
+            {% endfor %}
+            </ul>
+        </div>
+    </div>
+    {% endif %}
+    <!-- End Reference -->
+    
+    <!-- Note -->
+    <p class="fieldSet">
+        {{ addEnumForm.enumNote.label }}
+        {{ addEnumForm.enumNote }}
+    </p>
+    {% if addEnumForm.enumNote.error %}
+    <div class="ui-widget">
+        <div class="ui-state-error ui-corner-all">
+            <p class="errorLabel"><span class="ui-icon ui-icon-alert"></span>Error:</p>
+            <ul class="errors">
+            {% for error in addEnumForm.enumNote.error %}
+                <li>{{ error }}</li>
+            {% endfor %}
+            </ul>
+        </div>
+    </div>
+    {% endif %}
+    <!-- End Note -->
+    
+    <!-- Scope -->
+    <p class="fieldSet">
+        {{ addEnumForm.enumScope.label }}
+        {{ addEnumForm.enumScope }}
+    </p>
+    {% if addEnumForm.enumScope.error %}
+    <div class="ui-widget">
+        <div class="ui-state-error ui-corner-all">
+            <p class="errorLabel"><span class="ui-icon ui-icon-alert"></span>Error:</p>
+            <ul class="errors">
+            {% for error in addEnumForm.enumScope.error %}
+                <li>{{ error }}</li>
+            {% endfor %}
+            </ul>
+        </div>
+    </div>
+    {% endif %}
+    <!-- End Scope -->
+    
+    <p>Field Size must be a multiple of 8 bits</p>
+    
+    <!-- Size -->
+    <p class="fieldSet">
+        {{ addEnumForm.enumSize.label }}
+        {{ addEnumForm.enumSize }}
+    </p>
+    {% if addEnumForm.enumSize.error %}
+    <div class="ui-widget">
+        <div class="ui-state-error ui-corner-all">
+            <p class="errorLabel"><span class="ui-icon ui-icon-alert"></span>Error:</p>
+            <ul class="errors">
+            {% for error in addEnumForm.enumSize.error %}
+                <li>{{ error }}</li>
+            {% endfor %}
+            </ul>
+        </div>
+    </div>
+    {% endif %}
+    <!-- End Size -->
+    
+    <hr />
+    <p id="fieldLimits">Between {{ addEnumForm.fields.min_entries }} and {{ addEnumForm.fields.max_entries }} fields must be provided.</p>
+    {% set fieldsText = addEnumForm.fields|length %}
+    {% if fieldsText != 1 %}
+        {% set fieldsText = fieldsText|string + " fields are" %}
+    {% else %}
+        {% set fieldsText = fieldsText|string + " field is" %}
+    {% endif %}
+    <p id="currentFieldCount"><span id="fieldCounterSpace">{{fieldsText}}</span> currently defined.</p>
+    <!-- Start Field List -->
+    <div id="enumFields">
+        {% for field in addEnumForm.fields %}
+            <p class="fieldSet" id="fieldSet-{{loop.index0}}">
+                <a href="#" id="removeFieldSet-{{loop.index0}}" onclick="removeEnumField({{ loop.index0 }});">X</a>
+                {{ field.fieldName.label }}
+                {{ field.fieldName(size=15) }}<br />
+                {{ field.loggingValue.label }}
+                {{ field.loggingValue(size=15) }}<br />
+                {{ field.fieldValue.label }}
+                {{ field.fieldValue(size=2) }}<br />
+                {{ field.fieldNote.label }}
+                {{ field.fieldNote }}
+            </p>
+            {% if field.fieldName.error %}
+            <div class="ui-widget">
+                <div class="ui-state-error ui-corner-all">
+                    <p class="errorLabel"><span class="ui-icon ui-icon-alert"></span>Error:</p>
+                    <ul class="errors">
+                    {% for error in field.fieldName.error %}
+                        <li>{{ error }}</li>
+                    {% endfor %}
+                    </ul>
+                </div>
+            </div>
+            {% endif %}
+            {% if field.fieldValue.error %}
+            <div class="ui-widget">
+                <div class="ui-state-error ui-corner-all">
+                    <p class="errorLabel"><span class="ui-icon ui-icon-alert"></span>Error:</p>
+                    <ul class="errors">
+                    {% for error in field.fieldValue.error %}
+                        <li>{{ error }}</li>
+                    {% endfor %}
+                    </ul>
+                </div>
+            </div>
+            {% endif %}
+        {% endfor %}
+    </div>
+    <!-- End Field List -->
+    <a href="#" class="ui-button ui-widget ui-corner-all" onclick="addEnumField();">Add Enum Field</a>
+    <hr />
+    <input type="submit" value="Edit Enum" class="ui-button ui-widget ui-corner-all" />
+</form>
+</div>
+
+
+<!-- ADD Dialogs -->
 <div id="addEnumDialog" class="dialog" title="Add Enum">
     <form method="POST" action="{{ url_for('main.addEnum') }}">
         {{ addEnumForm.csrf_token }}
         
         <!-- Name -->
         <p class="fieldSet">
+            
             {{ addEnumForm.enumName.label }}
             {{ addEnumForm.enumName }}
         </p>
@@ -297,9 +462,12 @@ function removeEnumField(fieldNumber) {
     updateEnumFieldCount();
 }
 
+
+
 $(function() {
 	
 	const buttonsAndDialogs = ["addEnum"];
+    const buttonsAndDialogs1 = ["editEnum"];
 
 	for(let i = 0; i < buttonsAndDialogs.length; ++i)
 	{
@@ -309,10 +477,21 @@ $(function() {
             loadForm(event, value + 'Dialog');
         });
 	}
+
+    for(let i = 0; i < buttonsAndDialogs1.length; ++i)
+	{
+	    let value = buttonsAndDialogs1[i];
+        $('#' + value + 'Dialog').dialog(dialogInitializationValue);
+        $('.' + value + 'Button').click(function(event) {
+            loadForm(event, value + 'Dialog');
+        });
+	}
+	
 	
 	$(".confirmDelete").click(function(){
         return confirm("Are you sure you want to delete?");
     })
+
 });
 </script>
 {% endblock additionalJavascript %}

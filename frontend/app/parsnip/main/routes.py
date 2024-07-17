@@ -299,7 +299,19 @@ def removeSwitch(index):
 ################################################################################
 # WIP
 ################################################################################
-                           
+
+#Route for edit 
+@main.route("/editEnum/<int:index>", methods=['POST'])
+def editEnum():
+    editEnumForm = AddEnumForm()
+
+    if editEnumForm.validate_on_submit():
+        addEnumToStructure(editEnumForm)
+
+    removeEnumFromStructure(index)  
+    return redirect(url_for('main.enums'))
+
+
 @main.route("/export/<string:exportType>", methods=['GET'])
 def exportData(exportType):
     if "snapshot" == exportType:
