@@ -196,7 +196,7 @@ def getParsnipFile(snapShot):
     # EntryPoint taken care of later
     copyIfExistsOrDefault("Protocol", contents, configContents, "")
     copyIfExistsOrDefault("protocolShortDescription", contents, configContents, "TODO: A summary of HART_IP in one line")
-    copyIfExistsOrDefault("protocolLongDescription", contents, configContents, "TODO: A more detailed description of HART_IP.\n    It can span multiple lines, with this indentation.")
+    copyIfExistsOrDefault("protocolLongDescription", contents, configContents, "TODO: A more detailed description of HART_IP.\nIt can span multiple lines, with this indentation.")
     copyIfExistsOrDefault("Ports", contents, configContents, [])
     copyIfExistsOrDefault("usesTCP", contents, configContents, False)
     copyIfExistsOrDefault("usesUDP", contents, configContents, False)
