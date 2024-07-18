@@ -278,6 +278,8 @@ The parser code files should now be located in the output_folder directory.
 
 Compile and package as usual. At minimum, Zeek version 6.1.0 is required to take full advantage of all features.
 
+As listed as a current limitation, the user will need to manually update the permissions on the testing/scripts/get-zeek-env file in the output folder to add execution permissions.
+
 ### Running the Parser with Zeek
 
 There are multiple ways to run the resulting parser using Zeek. Below is an example of one way to do it.
