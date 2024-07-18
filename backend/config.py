@@ -16,6 +16,8 @@ class Config:
         self.customFieldTypes = {}
         self.signatureFile = None
         self.conversionFile = None
+        self.shortDescription = ""
+        self.longDescription = ""
         
 def loadConfig(configFilePath):
     config = Config()
@@ -53,5 +55,11 @@ def loadConfig(configFilePath):
         
     if "conversionFile" in configObject and "" != configObject.get("conversionFile"):
         config.conversionFile = base64.b64decode(configObject.get("conversionFile")).decode()
+
+    if "protocolShortDescription" in configObject and "" != configObject.get("protocolShortDescription"):
+        config.shortDescription = configObject["protocolShortDescription"]
+
+    if "protocolLongDescription" in configObject and "" != configObject.get("protocolLongDescription"):
+        config.longDescription = configObject["protocolLongDescription"]
     
     return (True, config)                        

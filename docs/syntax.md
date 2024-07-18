@@ -41,6 +41,36 @@ Parsnip Example:
 "Protocol": "HART_IP"
 ```
 
+#### Protocol Summary
+A short (one line) description of the protocol.
+
+* Frontend Information
+    - Currently not implemented
+* Snapshot Syntax
+    - Top Level Element: "protocolShortDescription"
+* Parsnip Syntax
+    - general/config.json: "protocolShortDescription"
+
+Parsnip Example:
+```JSON
+"protocolShortDescription": "HART-IP is the IP extension of the HART protocol."
+```
+
+#### Protocol Description
+A longer description of the protocol which may span multiple lines (using the '\n' character in the string).
+
+* Frontend Information
+    - Currently not implemented
+* Snapshot Syntax
+    - Top Level Element: "protocolLongDescription"
+* Parsnip Syntax
+    - general/config.json: "protocolLongDescription"
+
+Parsnip Example:
+```JSON
+"protocolLongDescription": "HART-IP is the IP extension of the HART protocol.\nIt is a hybrid analog+digital industrial automation open protocol."
+```
+
 #### Parser Entry Point
 The [object](#structures_object) that serves as the initial entry point for parsing the protocol. In other words, the object that matches the start of a protocol packet.
 

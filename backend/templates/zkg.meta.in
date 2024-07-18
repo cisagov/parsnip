@@ -1,9 +1,8 @@
 [package]
 script_dir = scripts
 test_command = cd testing && btest -c btest.cfg
-summary = TODO: A summary of ${protocolName} in one line
-description = TODO: A more detailed description of ${protocolName}.
-    It can span multiple lines, with this indentation.
+summary = ${protocolSummary}
+description = ${protocolDescription}
 depends = 
     zeek >=6.1.0
 build_command = mkdir -p build && cd build && SPICYZ=$$(command -v spicyz || echo %(package_base)s/spicy-plugin/build/bin/spicyz) cmake .. && cmake --build .

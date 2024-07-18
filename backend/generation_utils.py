@@ -560,6 +560,8 @@ def writePackagingFiles(configuration, outRootFolder):
         "analyzerType": analyzerType,
         "transportProtocolInformation": transportProtocolInformation,
         "protocolName": utils.PROTOCOL_NAME,
+        "protocolSummary": configuration.shortDescription.replace("\n", "\n    "),
+        "protocolDescription": configuration.longDescription.replace("\n", "\n    "),
         "entryPoint": entryPoint,
         "protocolNameUpper": utils.PROTOCOL_NAME.upper()
     }
