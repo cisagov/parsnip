@@ -492,6 +492,20 @@ def determineInterScopeDependencies(configuration, bitfields, objects, switches)
                     processDependency(field, normalScope, crossScopeItems, configuration.customFieldTypes, switches)
     return crossScopeItems
     
+def writeBasicFiles(configuration, outRootFolder):
+    # .gitignore
+    copyFile(os.path.join("templates", "gitignore.in"),
+             os.path.join(outRootFolder, ".gitignore"))
+
+    # README
+    data = {
+        "protocolName": utils.PROTOCOL_NAME,
+        "protocolDescription": configuration.longDescription        
+    }
+
+    copyTemplateFile(os.path.join("templates", "README.md.in"), data,
+                     os.path.join(outRootFolder, "README.md"))
+        
 def writeCMakeFiles(outRootFolder):
     # Create root CMakeLists.txt file    
     data = {"protocol": utils.PROTOCOL_NAME}
@@ -505,7 +519,7 @@ def writeCMakeFiles(outRootFolder):
 
     copyFile(os.path.join("templates", "FindSpicyPlugin.cmake.in"),
              os.path.join(cmakeFolder, "FindSpicyPlugin.cmake"))
-        
+
 def writeTestFiles(outRootFolder):
     # Create test folder contents
     testingFolder = os.path.join(outRootFolder, "testing")
@@ -953,6 +967,8 @@ def writeLastCMakeFile(analyzerFolder, scriptFiles, sourceFiles):
 def writeParserFiles(configuration, outRootFolder, zeekTypes, zeekMainFileObject, crossScopeItems, bitfields, enums, objects, switches, entryPointScope, entryPointName):
     # Create base folder
     os.makedirs(outRootFolder, exist_ok=True)
+    # Basic files such as .gitignore and README
+    writeBasicFiles(configuration, outRootFolder)
     # Fill in the rest of the structure
     writeCMakeFiles(outRootFolder)
     writePackagingFiles(configuration, outRootFolder)

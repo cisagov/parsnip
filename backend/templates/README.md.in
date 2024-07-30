@@ -1,0 +1,9 @@
+# ${protocolName}
+
+## Overview
+
+${protocolName} is a Zeek plugin (written in [Spicy](https://docs.zeek.org/projects/spicy/en/latest/)) for parsing and logging fields used by the ${protocolName} protocol.
+
+${protocolDescription}
+
+## Installation

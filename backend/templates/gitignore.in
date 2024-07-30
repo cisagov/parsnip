@@ -1,0 +1,12 @@
+# Development Machine Files
+.*.swp
+*~
+*.bak
+*.DS_Store
+.~lock.*#
+.devcontainer/
+
+# Parsnip/Zeek Output Files
+*.svg
+*cycles.txt
+*.log
