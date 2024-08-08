@@ -494,8 +494,12 @@ def determineInterScopeDependencies(configuration, bitfields, objects, switches)
     
 def writeBasicFiles(configuration, outRootFolder):
     # .gitignore
-    copyFile(os.path.join("templates", "gitignore.in"),
-             os.path.join(outRootFolder, ".gitignore"))
+    if configuration.gitignoreFile is not None:
+        writeDataToFile(configuration.gitignoreFile,
+                        os.path.join(outRootFolder, ".gitignore"))
+    else:
+        copyFile(os.path.join("templates", "gitignore.in"),
+                 os.path.join(outRootFolder, ".gitignore"))
 
     # README
     data = {
