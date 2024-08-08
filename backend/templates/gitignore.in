@@ -4,7 +4,7 @@
 *.bak
 *.DS_Store
 .~lock.*#
-.devcontainer/
+#.devcontainer/
 
 # Parsnip/Zeek Output Files
 *.svg
