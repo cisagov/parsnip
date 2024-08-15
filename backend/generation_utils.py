@@ -504,7 +504,8 @@ def writeBasicFiles(configuration, outRootFolder):
     # README
     data = {
         "protocolName": utils.PROTOCOL_NAME,
-        "protocolDescription": configuration.longDescription        
+        "protocolDescription": configuration.longDescription,
+        "outputFolder": os.path.basename(os.path.normpath(outRootFolder))
     }
 
     copyTemplateFile(os.path.join("templates", "README.md.in"), data,
@@ -534,6 +535,8 @@ def writeTestFiles(outRootFolder):
     os.makedirs(scriptsFolder, exist_ok=True)
     filesFolder = os.path.join(testingFolder, "files")
     os.makedirs(filesFolder, exist_ok=True)
+    tracesFolder = os.path.join(testingFolder, "traces")
+    os.makedirs(tracesFolder, exist_ok=True)
 
     copyFile(os.path.join("templates", "btest.cfg.in"),
              os.path.join(testingFolder, "btest.cfg"))

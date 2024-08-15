@@ -10,3 +10,10 @@
 *.svg
 *cycles.txt
 *.log
+
+# Zeek Test Files
+testing/.tmp/
+testing/.btest.failed.dat
+
+# Don't ignore baseline log files
+!testing/baseline/*/*.log
