@@ -16,6 +16,7 @@ class Config:
         self.customFieldTypes = {}
         self.signatureFile = None
         self.conversionFile = None
+        self.gitignoreFile = None
         self.shortDescription = ""
         self.longDescription = ""
         
@@ -55,6 +56,9 @@ def loadConfig(configFilePath):
         
     if "conversionFile" in configObject and "" != configObject.get("conversionFile"):
         config.conversionFile = base64.b64decode(configObject.get("conversionFile")).decode()
+
+    if "gitignoreFile" in configObject and "" != configObject.get("gitignoreFile"):
+        config.gitignoreFile = base64.b64decode(configObject.get("gitignoreFile")).decode()
 
     if "protocolShortDescription" in configObject and "" != configObject.get("protocolShortDescription"):
         config.shortDescription = configObject["protocolShortDescription"]

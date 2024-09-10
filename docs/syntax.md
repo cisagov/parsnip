@@ -206,26 +206,6 @@ File Contents Example:
 
 namespace ETHERCAT_CONVERSION
 {
-#define ID_LEN 9
-
-    std::string generateId() {
-        std::stringstream ss;
-        for (auto i = 0; i < ID_LEN; i++) {
-            // Generate a random char
-            std::random_device rd;
-            std::mt19937 gen(rd());
-            std::uniform_int_distribution<> dis(0, 255);
-            const auto rc = dis(gen);
-
-            // Hex representaton of random char
-            std::stringstream hexstream;
-            hexstream << std::hex << rc;
-            auto hex = hexstream.str();
-            ss << (hex.length() < 2 ? '0' + hex : hex);
-        }
-        return ss.str();
-    }
-
     std::string packedBytesConversion(const hilti::rt::Bytes &data)    {
         std::string returnValue;
         // TODO: Useful stuff
@@ -233,7 +213,7 @@ namespace ETHERCAT_CONVERSION
     }
 }
 ```
-Note: The generateID() function is required in the conversion file.
+
 #### Signature File
 Base64 encoded file contents that will be used to generate the dpd.sig Zeek file.
 
@@ -258,6 +238,16 @@ signature dpd_parser_tcp {
   enable "PARSER_TCP"
 }
 ```
+
+#### .gitignore File
+Base64 encoded file contents that will be used to generate the .gitignore file
+
+* Frontend Information
+    - Currently not implemented
+* Snapshot Syntax
+    - Top Level Element: "gitignoreFile"
+* Parsnip Syntax
+    - general/config.json: "gitignoreFile"
 
 ### Protocol Ports
 A list of TCP/UDP ports used by the protocol.
