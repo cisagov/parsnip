@@ -46,7 +46,8 @@ class ZeekMain:
         returnString += "{}Log::create_stream({}::{},\n".format(indent, utils.PROTOCOL_NAME.upper(), recordLogName)
         returnString += "{}[$columns={}{},\n".format(indent, record.scope, record.name)
         returnString += "{}$ev=log_{},\n".format(indent, record.name.lower())
-        returnString += "{}$path=\"{}_{}\"]);\n".format(indent, utils.PROTOCOL_NAME.lower(), pathName)
+        returnString += "{}$path=\"{}_{}\",\n".format(indent, utils.PROTOCOL_NAME.lower(), pathName)
+        returnString += "{}$policy=log_policy_{}]);\n".format(indent, record.name.lower())
         return returnString
         
     def _generateLogStreamString(self, records):
@@ -79,7 +80,9 @@ class ZeekMain:
         returnString = ""
         for record in records:
             recordLogEventName = "log_{}".format(record.name.lower())
+            recordLogPolicyName = "log_policy_{}".format(record.name.lower())
             returnString += "{}global {}: event(rec: {}{});\n".format(utils.SINGLE_TAB, recordLogEventName, record.scope, record.name)
+            returnString += "{}global {}: Log::PolicyHook;\n".format(utils.SINGLE_TAB, recordLogPolicyName)
         return returnString
         
     def _generateEmits(self, records):
