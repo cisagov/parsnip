@@ -90,11 +90,15 @@ def _addCrossScopeItem(currentScope, otherScope, itemType, itemReference, crossS
         crossScopeList[currentScope][otherScope][itemType] = set()
     crossScopeList[currentScope][otherScope][itemType].add(itemReference)
 
-def processDependency(item, currentScope, crossScopeList, customTypes, switches):
+def processDependency(item, currentScope, crossScopeList, customTypes, switches, bitfields):
     if item.type in ["enum", "object"]:
         if item.scope != currentScope:
             # Crossing the scopes
             _addCrossScopeItem(currentScope, item.scope, item.type, item.referenceType, crossScopeList)
+    elif item.type in ["bits"]:
+        for field in bitfields[item.scope][item.referenceType].fields:
+            if field.scope != currentScope:
+                _addCrossScopeItem(currentScope, field.scope, field.type, field.referenceType, crossScopeList)
     elif item.type in ["list"] and item.elementType in ["enum", "object"]:
         if item.scope != currentScope:
             # Crossing the scopes
@@ -103,7 +107,7 @@ def processDependency(item, currentScope, crossScopeList, customTypes, switches)
          item.scope in switches and \
          item.referenceType in switches[item.scope]:
         for option in switches[item.scope][item.referenceType].options:
-            processDependency(option.action, currentScope, crossScopeList, customTypes, switches)
+            processDependency(option.action, currentScope, crossScopeList, customTypes, switches, bitfields)
     elif item.type in customTypes:
         normalConversionScope = utils.normalizedScope(utils.CONVERSION_SCOPE, "custom")
         _addCrossScopeItem(currentScope, normalConversionScope, "custom", item.type, crossScopeList)
@@ -463,9 +467,9 @@ def determineInterScopeDependencies(configuration, bitfields, objects, switches)
                             if "id" not in crossScopeItems[normalScope][normalIDScope]:
                                 crossScopeItems[normalScope][normalIDScope]["id"] = set()
                 for dependency in currentObject.dependsOn:
-                    processDependency(dependency, normalScope, crossScopeItems, configuration.customFieldTypes, switches)
+                    processDependency(dependency, normalScope, crossScopeItems, configuration.customFieldTypes, switches, bitfields)
                 for field in currentObject.fields:
-                    processDependency(field, normalScope, crossScopeItems, configuration.customFieldTypes, switches)
+                    processDependency(field, normalScope, crossScopeItems, configuration.customFieldTypes, switches, bitfields)
                 for link in currentObject.linkIds:
                     if not link.isEndLink:
                         normalConversionScope = utils.normalizedScope(utils.CONVERSION_SCOPE, "custom")
@@ -483,13 +487,13 @@ def determineInterScopeDependencies(configuration, bitfields, objects, switches)
             for currentSwitchName in switches[normalScope]:
                 currentSwitch = switches[normalScope][currentSwitchName]
                 for option in currentSwitch.options:
-                    processDependency(option.action, normalScope, crossScopeItems, configuration.customFieldTypes, switches)
+                    processDependency(option.action, normalScope, crossScopeItems, configuration.customFieldTypes, switches, bitfields)
         if normalScope in bitfields:
             print("Processing bitfields in scope: {0}".format(normalScope))
             for currentBitfieldName in bitfields[normalScope]:
                 currentBitfield = bitfields[normalScope][currentBitfieldName]
                 for field in currentBitfield.fields:
-                    processDependency(field, normalScope, crossScopeItems, configuration.customFieldTypes, switches)
+                    processDependency(field, normalScope, crossScopeItems, configuration.customFieldTypes, switches, bitfields)
     return crossScopeItems
     
 def writeBasicFiles(configuration, outRootFolder):
