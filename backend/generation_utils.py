@@ -90,11 +90,15 @@ def _addCrossScopeItem(currentScope, otherScope, itemType, itemReference, crossS
         crossScopeList[currentScope][otherScope][itemType] = set()
     crossScopeList[currentScope][otherScope][itemType].add(itemReference)
 
-def processDependency(item, currentScope, crossScopeList, customTypes, switches):
+def processDependency(item, currentScope, crossScopeList, customTypes, switches, bitfields):
     if item.type in ["enum", "object"]:
         if item.scope != currentScope:
             # Crossing the scopes
             _addCrossScopeItem(currentScope, item.scope, item.type, item.referenceType, crossScopeList)
+    elif item.type in ["bits"]:
+        for field in bitfields[item.scope][item.referenceType].fields:
+            if field.scope != currentScope:
+                _addCrossScopeItem(currentScope, field.scope, field.type, field.referenceType, crossScopeList)
     elif item.type in ["list"] and item.elementType in ["enum", "object"]:
         if item.scope != currentScope:
             # Crossing the scopes
@@ -103,7 +107,7 @@ def processDependency(item, currentScope, crossScopeList, customTypes, switches)
          item.scope in switches and \
          item.referenceType in switches[item.scope]:
         for option in switches[item.scope][item.referenceType].options:
-            processDependency(option.action, currentScope, crossScopeList, customTypes, switches)
+            processDependency(option.action, currentScope, crossScopeList, customTypes, switches, bitfields)
     elif item.type in customTypes:
         normalConversionScope = utils.normalizedScope(utils.CONVERSION_SCOPE, "custom")
         _addCrossScopeItem(currentScope, normalConversionScope, "custom", item.type, crossScopeList)
@@ -463,9 +467,9 @@ def determineInterScopeDependencies(configuration, bitfields, objects, switches)
                             if "id" not in crossScopeItems[normalScope][normalIDScope]:
                                 crossScopeItems[normalScope][normalIDScope]["id"] = set()
                 for dependency in currentObject.dependsOn:
-                    processDependency(dependency, normalScope, crossScopeItems, configuration.customFieldTypes, switches)
+                    processDependency(dependency, normalScope, crossScopeItems, configuration.customFieldTypes, switches, bitfields)
                 for field in currentObject.fields:
-                    processDependency(field, normalScope, crossScopeItems, configuration.customFieldTypes, switches)
+                    processDependency(field, normalScope, crossScopeItems, configuration.customFieldTypes, switches, bitfields)
                 for link in currentObject.linkIds:
                     if not link.isEndLink:
                         normalConversionScope = utils.normalizedScope(utils.CONVERSION_SCOPE, "custom")
@@ -483,15 +487,34 @@ def determineInterScopeDependencies(configuration, bitfields, objects, switches)
             for currentSwitchName in switches[normalScope]:
                 currentSwitch = switches[normalScope][currentSwitchName]
                 for option in currentSwitch.options:
-                    processDependency(option.action, normalScope, crossScopeItems, configuration.customFieldTypes, switches)
+                    processDependency(option.action, normalScope, crossScopeItems, configuration.customFieldTypes, switches, bitfields)
         if normalScope in bitfields:
             print("Processing bitfields in scope: {0}".format(normalScope))
             for currentBitfieldName in bitfields[normalScope]:
                 currentBitfield = bitfields[normalScope][currentBitfieldName]
                 for field in currentBitfield.fields:
-                    processDependency(field, normalScope, crossScopeItems, configuration.customFieldTypes, switches)
+                    processDependency(field, normalScope, crossScopeItems, configuration.customFieldTypes, switches, bitfields)
     return crossScopeItems
     
+def writeBasicFiles(configuration, outRootFolder):
+    # .gitignore
+    if configuration.gitignoreFile is not None:
+        writeDataToFile(configuration.gitignoreFile,
+                        os.path.join(outRootFolder, ".gitignore"))
+    else:
+        copyFile(os.path.join("templates", "gitignore.in"),
+                 os.path.join(outRootFolder, ".gitignore"))
+
+    # README
+    data = {
+        "protocolName": utils.PROTOCOL_NAME,
+        "protocolDescription": configuration.longDescription,
+        "outputFolder": os.path.basename(os.path.normpath(outRootFolder))
+    }
+
+    copyTemplateFile(os.path.join("templates", "README.md.in"), data,
+                     os.path.join(outRootFolder, "README.md"))
+        
 def writeCMakeFiles(outRootFolder):
     # Create root CMakeLists.txt file    
     data = {"protocol": utils.PROTOCOL_NAME}
@@ -505,7 +528,7 @@ def writeCMakeFiles(outRootFolder):
 
     copyFile(os.path.join("templates", "FindSpicyPlugin.cmake.in"),
              os.path.join(cmakeFolder, "FindSpicyPlugin.cmake"))
-        
+
 def writeTestFiles(outRootFolder):
     # Create test folder contents
     testingFolder = os.path.join(outRootFolder, "testing")
@@ -516,6 +539,8 @@ def writeTestFiles(outRootFolder):
     os.makedirs(scriptsFolder, exist_ok=True)
     filesFolder = os.path.join(testingFolder, "files")
     os.makedirs(filesFolder, exist_ok=True)
+    tracesFolder = os.path.join(testingFolder, "traces")
+    os.makedirs(tracesFolder, exist_ok=True)
 
     copyFile(os.path.join("templates", "btest.cfg.in"),
              os.path.join(testingFolder, "btest.cfg"))
@@ -953,6 +978,8 @@ def writeLastCMakeFile(analyzerFolder, scriptFiles, sourceFiles):
 def writeParserFiles(configuration, outRootFolder, zeekTypes, zeekMainFileObject, crossScopeItems, bitfields, enums, objects, switches, entryPointScope, entryPointName):
     # Create base folder
     os.makedirs(outRootFolder, exist_ok=True)
+    # Basic files such as .gitignore and README
+    writeBasicFiles(configuration, outRootFolder)
     # Fill in the rest of the structure
     writeCMakeFiles(outRootFolder)
     writePackagingFiles(configuration, outRootFolder)
