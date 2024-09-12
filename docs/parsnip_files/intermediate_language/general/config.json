@@ -1,0 +1,20 @@
+{
+    "ParsnipVersion": "1.0",
+    "Protocol": "MySimpleProtocol",
+    "protocolShortDescription": "TODO: A summary of protocol in one line",
+    "protocolLongDescription": "TODO: A more detailed description of protocol.\n    It can span multiple lines, with this indentation.",
+    "Ports": [
+        {
+            "protocol": "tcp",
+            "port": 8888
+        }
+    ],
+    "usesTCP": true,
+    "usesUDP": false,
+    "usesLayer2": false,
+    "CustomFieldTypes": [],
+    "EntryPoint": "general.Message",
+    "Scopes": [
+        "general"
+    ]
+}

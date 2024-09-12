@@ -1,0 +1,28 @@
+[
+    {
+        "name": "HeaderBits",
+        "reference": "",
+        "notes": "",
+        "size": 8,
+        "fields": [
+            {
+                "name": "version",
+                "description": "Protocol Version",
+                "notes": "",
+                "type": "uint",
+                "referenceType": null,
+                "bits": "4..7"
+            },
+            {
+                "name": "messageType",
+                "description": "Message Type",
+                "notes": "",
+                "type": "enum",
+                "referenceType": "MessageType",
+                "bits": "0..3",
+                "scope": "general"
+            }
+        ],
+        "referenceCount": 1
+    }
+]

@@ -1,0 +1,92 @@
+[
+    {
+        "name": "Message",
+        "reference": "",
+        "notes": "Top Level Element",
+        "scope": "",
+        "logIndependently": false,
+        "logWithParent": false,
+        "dependsOn": [],
+        "fields": [
+            {
+                "name": "header",
+                "description": "",
+                "notes": "",
+                "type": "object",
+                "referenceType": "Header",
+                "scope": "general"
+            },
+            {
+                "name": "body",
+                "description": "",
+                "notes": "",
+                "type": "object",
+                "referenceType": "Body",
+                "inputs": [
+                    {
+                        "source": "self.header.length"
+                    }
+                ],
+                "scope": "general"
+            }
+        ],
+        "referenceCount": 0
+    },
+    {
+        "name": "Header",
+        "reference": "",
+        "notes": "2 Byte Header",
+        "scope": "",
+        "logIndependently": false,
+        "logWithParent": true,
+        "dependsOn": [],
+        "fields": [
+            {
+                "name": "headerBits",
+                "description": "",
+                "notes": "",
+                "type": "bits",
+                "referenceType": "HeaderBits",
+                "scope": "general"
+            },
+            {
+                "name": "length",
+                "description": "",
+                "notes": "",
+                "type": "uint",
+                "size": 8
+            }
+        ],
+        "referenceCount": 1
+    },
+    {
+        "name": "Body",
+        "reference": "",
+        "notes": "",
+        "scope": "",
+        "logIndependently": false,
+        "logWithParent": true,
+        "dependsOn": [
+            {
+                "name": "length",
+                "type": "uint",
+                "size": 8
+            }
+        ],
+        "fields": [
+            {
+                "name": "data",
+                "description": "",
+                "notes": "",
+                "type": "list",
+                "elementType": "uint",
+                "until": {
+                    "conditionType": "COUNT",
+                    "indicator": "length"
+                },
+                "size": 8
+            }
+        ],
+        "referenceCount": 1
+    }
+]
