@@ -79,7 +79,7 @@ def loggingParentScope(scope):
         
 def determineSpicyStringForAction(action, switch, inputs, actionColumn, customTypes, bitfields, switches, enums):
     if "void" == action.type:
-        return "void"
+        return "{0} : void".format(endingSpace(actionColumn, 0))
     mappedUntilValue = None
     if action.until is not None:
         mappedUntilValue = action.until
@@ -210,8 +210,8 @@ def _returnSwitchType(scope, referenceType, inputs, customTypes, bitfields, swit
             if "enum" == reference.dependsOn.type:
                 preString = "{0}::{1}::".format(reference.dependsOn.scope, reference.dependsOn.referenceType)
             outputString += "{0}{1}{2}{3} -> {4};\n".format(DOUBLE_TAB, preString, option.value, endingSpace(reference.column, len(str(option.value))), determineSpicyStringForAction(option.action, reference, inputs, reference.actionColumn, customTypes, bitfields, switches, enums))
-    defaultActionString = "void"
-    if reference.default is not None and reference.default.type != "void":
+    defaultActionString = "{0} : void".format(endingSpace(reference.actionColumn, 0))
+    if reference.default is not None:
         defaultActionString = determineSpicyStringForAction(reference.default, reference, inputs, reference.actionColumn, customTypes, bitfields, switches, enums)
     outputString += "{0}*{1}{2} -> {3};\n".format(DOUBLE_TAB, " "*len(preString), endingSpace(reference.column, 1), defaultActionString)
     outputString += "{0}}}".format(SINGLE_TAB)

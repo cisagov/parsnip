@@ -1,10 +1,10 @@
-## main.zeek
-##
-## ICSNPP-${protocolName}
-##
-## Zeek script type/record definitions describing the information
-## that will be written to the log files.
-##
+##! main.zeek
+##!
+##! ICSNPP-${protocolName}
+##!
+##! Zeek script type/record definitions describing the information
+##! that will be written to the log files.
+##!
 
 module ${protocolName};
 
