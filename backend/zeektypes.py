@@ -148,8 +148,6 @@ class ZeekMain:
                 functionsString += "function emit_{}_{}(c: connection) {{\n".format(utils.PROTOCOL_NAME.lower(), record.name.lower())
                 functionsString += "{}if (! c?${} )\n".format(utils.SINGLE_TAB, connectionName)
                 functionsString += "{}return;\n".format(utils.DOUBLE_TAB)
-                functionsString += "{}if ( c?${}_proto )\n".format(utils.SINGLE_TAB, utils.PROTOCOL_NAME.lower())
-                functionsString += "{}c${}$proto = c${}_proto;\n".format(utils. DOUBLE_TAB, connectionName, utils.PROTOCOL_NAME.lower())
                 functionsString += "{}Log::write({}::LOG_{}, c${});\n".format(utils.SINGLE_TAB, utils.PROTOCOL_NAME.upper(), record.name.upper(), connectionName)
                 functionsString += "{}delete c${};\n".format(utils.SINGLE_TAB, connectionName)
             functionsString += "}\n\n"
@@ -159,7 +157,7 @@ class ZeekRecord:
     def initializeRecordFields(self):
         protocolField = ZeekField()
         protocolField.name = "proto"
-        protocolField.type = "string"
+        protocolField.type = "transport_proto"
         timestampField = ZeekField()
         timestampField.name = "ts"
         timestampField.type = "time"
@@ -241,7 +239,7 @@ class ZeekRecord:
             hookString += "{}$ts=network_time(),\n".format(utils.SINGLE_TAB * 3)
             hookString += "{}$uid=c$uid,\n".format(utils.SINGLE_TAB * 3)
             hookString += "{}$id=c$id,\n".format(utils.SINGLE_TAB * 3)
-            hookString += "{}$proto=\"{}\");\n".format(utils.SINGLE_TAB * 3, utils.PROTOCOL_NAME.lower())
+            hookString += "{}$proto=get_conn_transport_proto(c$id));\n"
             hookString += "}\n\n"
         return hookString
 
