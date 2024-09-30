@@ -60,21 +60,12 @@ def createAndUseGraphInformation(configuration, objects, switches, bitfields, en
     
     updateObjectsBasedOnGraphInformation(cycles, pathInformation, objects, entryPointScope, entryPointName)
 
-def generateProtocolEvents(normalScope, entryPointScope, entryPointName, trasportProtos, ports=[], usesLayer2=False):
+def generateProtocolEvents(normalScope, entryPointScope, entryPointName, trasportProtos, usesLayer2=False):
     eventString = ""
     for protocol in trasportProtos:
         eventString += "protocol analyzer spicy::{}_{} over {}:\n".format(utils.PROTOCOL_NAME.upper(), protocol, protocol)
         eventString += "{}parse with {}::{}".format(utils.SINGLE_TAB, normalScope, entryPointName + "s")
-        if ports != []:
-            tempPorts = []
-            for port in ports:
-                if port.get("protocol").lower() == protocol.lower():
-                    tempPorts.append("{0}/{1}".format(port.get("port"), port.get("protocol").lower()))
-            if tempPorts:
-                eventString += ",\n{0}ports {{{1}}};\n".format(utils.SINGLE_TAB, ", ".join(tempPorts))
-        else:
-            eventString += ";\n"
-        eventString += "\n"
+        eventString += ";\n\n"
     if usesLayer2:
         eventString += "packet analyzer spicy::{}:\n".format(utils.PROTOCOL_NAME.upper())
         eventString += "{}parse with {}::{};".format(utils.SINGLE_TAB, normalScope, entryPointName + "s")
@@ -642,7 +633,7 @@ def _writeCoreZeekFiles(configuration, scriptsFolder, zeekMainFileObject, allEnu
     coreFiles.append("main.zeek")
     data = {
         "protocolName": utils.PROTOCOL_NAME.upper(),
-        "mainContents": zeekMainFileObject.generateMainFile(utils.USES_LAYER_2, configuration.ethernetProtocolNumber),
+        "mainContents": zeekMainFileObject.generateMainFile(utils.USES_LAYER_2, configuration),
         "loggingFunctions": zeekMainFileObject.addLoggingFunction()
     }
     copyTemplateFile(os.path.join("templates", "main.zeek.in"), data,
@@ -849,7 +840,7 @@ def _writeSpicyScopeFiles(analyzerFolder, configuration, scope, normalScope, add
     
 def _determineProtocolEventsString(normalScope, entryPointScope, entryPointName, transportProtocols, configuration):
     if normalScope == utils.normalizedScope(utils.DEFAULT_SCOPE, ""):
-        return generateProtocolEvents(normalScope, entryPointScope, entryPointName, transportProtocols, configuration.ports, utils.USES_LAYER_2)
+        return generateProtocolEvents(normalScope, entryPointScope, entryPointName, transportProtocols, utils.USES_LAYER_2)
     else:
         return ""
         
