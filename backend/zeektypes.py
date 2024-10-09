@@ -104,7 +104,6 @@ class ZeekMain:
         returnString = ""
         returnString += "# redefine connection record to contain one of each of the {} records\n".format(utils.PROTOCOL_NAME.lower())
         returnString += "redef record connection += {\n"
-        returnString += "{}{}_proto: string &optional;\n".format(utils.SINGLE_TAB, utils.PROTOCOL_NAME.lower())
         for record in records:
             returnString += "{}{}_{}: {}{} &optional;\n".format(utils.SINGLE_TAB, utils.PROTOCOL_NAME.lower(), record.name.lower(), record.scope, record.name)
         returnString += "};\n\n"
@@ -177,7 +176,7 @@ class ZeekRecord:
         timestampField.name = "ts"
         timestampField.type = "time"
         if utils.USES_LAYER_2:
-            commonFields = [timestampField, protocolField]
+            commonFields = [timestampField]
         else:
             uidField = ZeekField()
             uidField.name = "uid"
@@ -254,7 +253,7 @@ class ZeekRecord:
             hookString += "{}$ts=network_time(),\n".format(utils.SINGLE_TAB * 3)
             hookString += "{}$uid=c$uid,\n".format(utils.SINGLE_TAB * 3)
             hookString += "{}$id=c$id,\n".format(utils.SINGLE_TAB * 3)
-            hookString += "{}$proto=get_conn_transport_proto(c$id));\n"
+            hookString += "{}$proto=get_conn_transport_proto(c$id));\n".format(utils.SINGLE_TAB * 3)
             hookString += "}\n\n"
         return hookString
 
