@@ -46,7 +46,8 @@ class ZeekMain:
         returnString += "{}Log::create_stream({}::{},\n".format(indent, utils.PROTOCOL_NAME.upper(), recordLogName)
         returnString += "{}[$columns={}{},\n".format(indent, record.scope, record.name)
         returnString += "{}$ev=log_{},\n".format(indent, record.name.lower())
-        returnString += "{}$path=\"{}_{}\"]);\n".format(indent, utils.PROTOCOL_NAME.lower(), pathName)
+        returnString += "{}$path=\"{}_{}\",\n".format(indent, utils.PROTOCOL_NAME.lower(), pathName)
+        returnString += "{}$policy=log_policy_{}]);\n".format(indent, record.name.lower())
         return returnString
         
     def _generateLogStreamString(self, records):
@@ -79,7 +80,9 @@ class ZeekMain:
         returnString = ""
         for record in records:
             recordLogEventName = "log_{}".format(record.name.lower())
+            recordLogPolicyName = "log_policy_{}".format(record.name.lower())
             returnString += "{}global {}: event(rec: {}{});\n".format(utils.SINGLE_TAB, recordLogEventName, record.scope, record.name)
+            returnString += "{}global {}: Log::PolicyHook;\n".format(utils.SINGLE_TAB, recordLogPolicyName)
         return returnString
         
     def _generateEmits(self, records):
@@ -107,7 +110,7 @@ class ZeekMain:
         returnString += "};\n\n"
         return returnString
 
-    def generateMainFile(self, usesLayer2, ethernetProtocolNumber=0):
+    def generateMainFile(self, usesLayer2, configuration):
         fileString = "export {\n"
         fileString += self._generateFileString(self.records)
         fileString += self._generateGlobals(self.records)
@@ -116,17 +119,32 @@ class ZeekMain:
         
         fileString += self._generateConnections(self.records)
         
-        # TODO add port-based detection stuff
-        fileString += "#Put protocol detection information here\n"
+        analyzerString = ""
+        if [] != configuration.ports:
+            tempPorts = {}
+            for port in configuration.ports:
+                protocol = port.get("protocol").lower()
+                if protocol not in tempPorts:
+                    tempPorts[protocol] = []
+                tempPorts[protocol].append(port.get("port"))
+            for key in tempPorts:
+                fileString += "# Define {0} ports\n".format(key)
+                fileString += "const {0}_ports = {{\n".format(key)
+                for value in tempPorts[key]:
+                    fileString += "{0}{1}/{2},\n".format(utils.SINGLE_TAB, value, key)
+                fileString += "};\n\n"
+                analyzerString += "{0}Analyzer::register_for_ports(Analyzer::ANALYZER_SPICY_{1}, {2});\n".format(utils.SINGLE_TAB, "{0}_{1}".format(utils.PROTOCOL_NAME.upper(), key.upper()), "{0}_ports".format(key))
+        fileString += "# Initialization Function\n"
         fileString += "event zeek_init() &priority=5 {\n"
         # Handle ethernet registration if necessary
         if usesLayer2:
             fileString += "{0}# Register on top of Ethernet\n".format(utils.SINGLE_TAB)
-            fileString += "{0}if ( ! PacketAnalyzer::try_register_packet_analyzer_by_name(\"Ethernet\", {1}, \"spicy_{2}\") )\n".format(utils.SINGLE_TAB, ethernetProtocolNumber, utils.PROTOCOL_NAME.upper())
+            fileString += "{0}if ( ! PacketAnalyzer::try_register_packet_analyzer_by_name(\"Ethernet\", {1}, \"spicy_{2}\") )\n".format(utils.SINGLE_TAB, configuration.ethernetProtocolNumber, utils.PROTOCOL_NAME.upper())
             fileString += "{0}Reporter::error(\"cannot register Spicy analyzer\");".format(utils.DOUBLE_TAB)
             fileString += "\n"
         fileString += "{}# initialize logging streams for all {} logs\n".format(utils.SINGLE_TAB, utils.PROTOCOL_NAME.lower())
         fileString += self._generateLogStreamString(self.records)
+        fileString += analyzerString
         fileString += "}\n"
         return fileString
     

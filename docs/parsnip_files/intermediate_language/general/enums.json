@@ -1,0 +1,24 @@
+[
+    {
+        "name": "MessageType",
+        "reference": "",
+        "notes": "",
+        "scope": "",
+        "size": 8,
+        "fields": [
+            {
+                "name": "ServerMessage",
+                "loggingValue": "Server Message",
+                "value": 0,
+                "notes": "Message to Server"
+            },
+            {
+                "name": "ClientMessage",
+                "loggingValue": "Client Message",
+                "value": 1,
+                "notes": "Message to Client"
+            }
+        ],
+        "referenceCount": 1
+    }
+]

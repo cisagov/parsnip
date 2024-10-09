@@ -13,7 +13,6 @@ __pycache__
 /backend/cycles.txt
 /frontend/app/flask_session
 *.hlto
-Dockerfile
 *.log
 .venv/
 objects.json
@@ -21,3 +20,4 @@ bitfields.json
 switches.json
 config.json
 enums.json
+transfer/

@@ -1,0 +1,150 @@
+{
+    "version": "1.0",
+    "Protocol": "MySimpleProtocol",
+    "EntryPoint": "Message",
+    "usesTCP": true,
+    "usesUDP": false,
+    "Ports": [
+        {
+            "protocol": "tcp",
+            "port": 8888
+        }
+    ],
+    "Structures": {
+        "Objects": [
+            {
+                "name": "Message",
+                "reference": "",
+                "notes": "Top Level Element",
+                "scope": "",
+                "logIndependently": false,
+                "logWithParent": true,
+                "dependsOn": [],
+                "fields": [
+                    {
+                        "name": "header",
+                        "description": "",
+                        "notes": "",
+                        "type": "object",
+                        "referenceType": "Header"
+                    },
+                    {
+                        "name": "body",
+                        "description": "",
+                        "notes": "",
+                        "type": "object",
+                        "referenceType": "Body",
+                        "inputs": [
+                            {
+                                "source": "self.header.length"
+                            }
+                        ]
+                    }
+                ]
+            },
+            {
+                "name": "Header",
+                "reference": "",
+                "notes": "2 Byte Header",
+                "scope": "",
+                "logIndependently": false,
+                "logWithParent": true,
+                "dependsOn": [],
+                "fields": [
+                    {
+                        "name": "headerBits",
+                        "description": "",
+                        "notes": "",
+                        "type": "bits",
+                        "referenceType": "HeaderBits"
+                    },
+                    {
+                        "name": "length",
+                        "description": "",
+                        "notes": "",
+                        "type": "uint",
+                        "size": 8
+                    }
+                ]
+            },
+            {
+                "name": "Body",
+                "reference": "",
+                "notes": "",
+                "scope": "",
+                "logIndependently": false,
+                "logWithParent": true,
+                "dependsOn": [
+                    {
+                        "name": "length",
+                        "type": "uint",
+                        "size": 8
+                    }
+                ],
+                "fields": [
+                    {
+                        "name": "data",
+                        "description": "",
+                        "notes": "",
+                        "type": "list",
+                        "elementType": "uint",
+                        "until": {
+                            "conditionType": "COUNT",
+                            "indicator": "length"
+                        },
+                        "size": 8
+                    }
+                ]
+            }
+        ],
+        "Enums": [
+            {
+                "name": "MessageType",
+                "reference": "",
+                "notes": "",
+                "scope": "",
+                "size": 8,
+                "fields": [
+                    {
+                        "name": "ServerMessage",
+                        "loggingValue": "Server Message",
+                        "value": 0,
+                        "notes": "Message to Server"
+                    },
+                    {
+                        "name": "ClientMessage",
+                        "loggingValue": "Client Message",
+                        "value": 1,
+                        "notes": "Message to Client"
+                    }
+                ]
+            }
+        ],
+        "Bitfields": [
+            {
+                "name": "HeaderBits",
+                "reference": "",
+                "notes": "",
+                "size": 8,
+                "fields": [
+                    {
+                        "name": "version",
+                        "description": "Protocol Version",
+                        "notes": "",
+                        "type": "uint",
+                        "referenceType": null,
+                        "bits": "4..7"
+                    },
+                    {
+                        "name": "messageType",
+                        "description": "Message Type",
+                        "notes": "",
+                        "type": "enum",
+                        "referenceType": "MessageType",
+                        "bits": "0..3"
+                    }
+                ]
+            }
+        ]
+    }
+}
