@@ -213,9 +213,7 @@ class Object:
             convertingFunctionString += "{}hook set_session_{}(c);\n\n".format(utils.getTabString(tabSize), zeekStructureName.lower())
             convertingFunctionString += "{}local {} = c${}_{};\n\n".format(utils.getTabString(tabSize), localVariableName, utils.PROTOCOL_NAME.lower(), zeekStructureName.lower())
         else: # utils.USES_LAYER_2:
-            convertingFunctionString += "{}local {} = {}(\n".format(utils.getTabString(tabSize), localVariableName, zeekStructureName)
-            convertingFunctionString += "{}$ts=network_time(),\n".format(utils.getTabString(tabSize + 1))
-            convertingFunctionString += "{}$proto=\"{}\"\n{});\n".format(utils.getTabString(tabSize + 1), utils.PROTOCOL_NAME.lower(), utils.getTabString(tabSize))
+            convertingFunctionString += "{}local {} = {}($ts=network_time());\n".format(utils.getTabString(tabSize), localVariableName, zeekStructureName)
         return (localVariableName, convertingFunctionString)
         
     def _finishForNonFields(self, localVariableName, tabSize, zeekStructureName):
