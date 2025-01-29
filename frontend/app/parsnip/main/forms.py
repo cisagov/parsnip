@@ -10,7 +10,7 @@ from wtforms.validators import InputRequired, Regexp, NumberRange, Optional
 # Conditional Test Classes
 ################################################################################
 class RequiredIfReferenceType(InputRequired):
-    field_flags = ('requiredif',)
+    field_flags = {'requiredif': True}
     
     def __init__(self, conditionalFieldName, message=None, *args, **kwargs):
         self.conditionalFieldName = conditionalFieldName
@@ -24,7 +24,7 @@ class RequiredIfReferenceType(InputRequired):
             super(RequiredIfReferenceType, self).__call__(form, field)
 
 class RequiredIfSizedElement(InputRequired):
-    field_flags = ('requiredif',)
+    field_flags = {'requiredif': True}
     
     def __init__(self, conditionalFieldName, message=None, *args, **kwargs):
         self.conditionalFieldName = conditionalFieldName
@@ -38,7 +38,7 @@ class RequiredIfSizedElement(InputRequired):
             super(RequiredIfSizedElement, self).__call__(form, field)
             
 class RequiredIfSizedElement2(InputRequired):
-    field_flags = ('requiredif',)
+    field_flags = {'requiredif': True}
     
     def __init__(self, conditionalFieldName1, conditionalFieldName2, message=None, *args, **kwargs):
         self.conditionalFieldName1 = conditionalFieldName1
@@ -56,7 +56,7 @@ class RequiredIfSizedElement2(InputRequired):
             super(RequiredIfSizedElement2, self).__call__(form, field)
             
 class RequiredIfBitfieldFieldTypeForBit(InputRequired):
-    field_flags = ('requiredif',)
+    field_flags = {'requiredif': True}
 
     def __init__(self, conditionalFieldName, message=None, *args, **kwargs):
         self.conditionalFieldName = conditionalFieldName
@@ -70,7 +70,7 @@ class RequiredIfBitfieldFieldTypeForBit(InputRequired):
             super(RequiredIfBitfieldFieldTypeForBit, self).__call__(form, field)
             
 class RequiredIfBitfieldFieldTypeForBits(InputRequired):
-    field_flags = ('requiredif',)
+    field_flags = {'requiredif': True}
 
     def __init__(self, conditionalFieldName, message=None, *args, **kwargs):
         self.conditionalFieldName = conditionalFieldName
@@ -84,7 +84,7 @@ class RequiredIfBitfieldFieldTypeForBits(InputRequired):
             super(RequiredIfBitfieldFieldTypeForBits, self).__call__(form, field)
             
 class RequiredIfBitfieldFieldTypeForReference(InputRequired):
-    field_flags = ('requiredif',)
+    field_flags = {'requiredif': True}
 
     def __init__(self, conditionalFieldName, message=None, *args, **kwargs):
         self.conditionalFieldName = conditionalFieldName
