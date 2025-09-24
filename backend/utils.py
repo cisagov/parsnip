@@ -33,7 +33,8 @@ spicyToZeek = {
     "string"    : "string",
     "enum"      : "string",
     "float"     : "double",
-    "bytes"     : "string"
+    "bytes"     : "string",
+    "time"      : "time"
 }
 customFieldTypes = {}
 
@@ -142,7 +143,17 @@ def _returnSpicyObjectType(itemType, enums, scope, referenceType, inputs):
                 outputString += ", "
         outputString += ")"
     return ("", outputString)
-    
+
+# function for converting to time type
+def _returnTimeType(size):
+    if size == 32:
+        return ("", "uint32 &convert=cast<time>($$)")
+    #elif size == 64:
+    #    return ("", "uint64 &convert=cast<time>($$)")
+    else:
+        print("Currently unknown time size {0}".format(size))
+        return ("", "")
+
 def _returnFloatType(size):
     if 32 == size:
         return ("", "real &type=spicy::RealType::IEEE754_Single")
@@ -236,6 +247,8 @@ def determineSpicyStringForType(itemName, itemType, elementType, referenceType, 
         return ("", "string")
     elif "switch" == itemType:
         return _returnSwitchType(scope, referenceType, inputs, customTypes, bitfields, switches, enums)
+    elif "time" == itemType: # added handler for time
+        return _returnTimeType(size)  # assumes 32-bit time in seconds    
     elif itemType in customTypes:
         # See if it's custom type
         sizeInBytes = int(ceil(size / 8))

@@ -46,7 +46,12 @@ class ZeekMain:
         returnString += "{}Log::create_stream({}::{},\n".format(indent, utils.PROTOCOL_NAME.upper(), recordLogName)
         returnString += "{}[$columns={}{},\n".format(indent, record.scope, record.name)
         returnString += "{}$ev=log_{},\n".format(indent, record.name.lower())
-        returnString += "{}$path=\"{}_{}\",\n".format(indent, utils.PROTOCOL_NAME.lower(), pathName)
+        # If the record is named "general", don't append the name to the path
+        if pathName == "general":
+            returnString += "{}$path=\"{}\",\n".format(indent, utils.PROTOCOL_NAME.lower())
+        else:
+            returnString += "{}$path=\"{}_{}\",\n".format(utils.PROTOCOL_NAME.lower(), pathName)
+        #returnString += "{}$path=\"{}_{}\",\n".format(indent, utils.PROTOCOL_NAME.lower(), pathName)
         returnString += "{}$policy=log_policy_{}]);\n".format(indent, record.name.lower())
         return returnString
         
@@ -192,7 +197,8 @@ class ZeekRecord:
         self.fields = []
         self.commandStructures = []
         self.column = 8
-        self.name = utils.commandNameToConst(name).lower() + "_log"
+        #self.name = utils.commandNameToConst(name).lower() + "_log" -> removed extra "_log" from output log filename
+        self.name = utils.commandNameToConst(name).lower()
 
         # self.subname = ""
         self.logName = ""
