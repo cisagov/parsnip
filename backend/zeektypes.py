@@ -50,7 +50,7 @@ class ZeekMain:
         if pathName == "general":
             returnString += "{}$path=\"{}\",\n".format(indent, utils.PROTOCOL_NAME.lower())
         else:
-            returnString += "{}$path=\"{}_{}\",\n".format(utils.PROTOCOL_NAME.lower(), pathName)
+            returnString += "{}$path=\"{}_{}\",\n".format(indent, utils.PROTOCOL_NAME.lower(), pathName)
         #returnString += "{}$path=\"{}_{}\",\n".format(indent, utils.PROTOCOL_NAME.lower(), pathName)
         returnString += "{}$policy=log_policy_{}]);\n".format(indent, record.name.lower())
         return returnString
