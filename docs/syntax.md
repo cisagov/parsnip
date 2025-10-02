@@ -958,6 +958,7 @@ Parsnip supports:
     - only in bitfields
 * bytes
 * float values (float)
+* time
 * void
 
 ### Bytes
@@ -991,6 +992,22 @@ Parsnip Example:
     "size": 32
 }
 ```
+### Time Values
+
+Time values are used to represent timestamps passed in various protocol commands. Time fields will be parsed as an unsigned integer and converted to a timestamp for logging. Currently, Parsnip only supports 32 bit time fields.
+
+Parsnip Example:
+```JSON
+# Time Field
+
+{
+    "type": "time",
+    "description": "Description",
+    "name": "Name",
+    "size": 32
+}
+```
+
 
 ### Unsigned and Signed Integers
 
