@@ -66,7 +66,7 @@ All services share the `parsnip-network` bridge.
 
 ### Rebuilds
 
-The backend and frontend bake source at build time (`COPY . .`). `docker compose restart` runs stale code; `docker compose up -d` without `--build` can reuse cached layers. When a change needs to be implemented, rebuild and verify the served artifact:
+The backend and frontend bake source at build time (`COPY . .`). `docker compose restart` runs stale code; `docker compose up -d` without `--build` can reuse cached layers. When a change needs to be implemented, rebuild and verify the served artifact.
 
 ## Known limitations
 
