@@ -1,4 +1,0 @@
-rustworkx
-matplotlib
-pygraphviz
-pydot

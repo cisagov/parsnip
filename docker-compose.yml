@@ -1,0 +1,71 @@
+services:
+  # PostgreSQL Database
+  db:
+    image: postgres:16
+    container_name: parsnip-db
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: mydb
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - parsnip-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d mydb"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Backend Flask API
+  backend:
+    build:
+      context: ./parsnip-backend
+      dockerfile: api/Dockerfile
+    container_name: parsnip-backend
+    ports:
+      - "5000:5000"
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - parsnip-network
+    restart: unless-stopped
+
+  # Frontend Angular Application
+  frontend:
+    build:
+      context: ./parsnip-frontend
+      dockerfile: Dockerfile
+    container_name: parsnip-frontend
+    ports:
+      - "4200:80"
+    depends_on:
+      - backend
+    networks:
+      - parsnip-network
+    restart: unless-stopped
+
+  # Long-running compiler microservice. Backs the frontend Compile tab.
+  # Standalone CLI users should use parsnip-compiler/docker-compose.yml or
+  # `docker run --rm parsnip-compiler <input> <output>` directly.
+  compiler-service:
+    build:
+      context: ./parsnip-compiler
+      dockerfile: Dockerfile
+    container_name: parsnip-compiler-service
+    entrypoint: ["python3", "/app/compiler_service.py"]
+    ports:
+      - "5001:5001"
+    networks:
+      - parsnip-network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+
+networks:
+  parsnip-network:
+    driver: bridge

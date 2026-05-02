@@ -1,3 +1,0 @@
-module ${scope};
-
-public function generateId() : string &cxxname="${scope}::generateId";

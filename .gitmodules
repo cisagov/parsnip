@@ -1,0 +1,12 @@
+[submodule "parsnip-frontend"]
+	path = parsnip-frontend
+	url = https://github.com/cisagov/parsnip-frontend.git
+	branch = main
+[submodule "parsnip-backend"]
+	path = parsnip-backend
+	url = https://github.com/cisagov/parsnip-backend.git
+	branch = main
+[submodule "parsnip-compiler"]
+	path = parsnip-compiler
+	url = https://github.com/cisagov/parsnip-compiler.git
+	branch = main
